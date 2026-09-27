@@ -101,7 +101,8 @@ const NO_SON_HOSTS = new Set([
   'ChannelAccount.id', 'Message.id', 'PhoneNumber.id', 'User.id', 'message.id', 'message.new',
   'CreateWebhookDto.events', 'Date.now', 'app.post', 'calls.map', 'e.name', 'event.data', 'info.files.map',
   'info.name', 'integrations.test', 'kontesta.webhooks.ping', 'lead.id', 'lead.name', 'new.target.name',
-  'res.data', 'sub.id', 'test.ping', 'this.name', 'typed.id', 'webhooks.ping',
+  'res.data', 'sub.id', 'test.ping', 'this.name', 'typed.id', 'webhooks.ping', 'i.test', 'OCTETOS.test',
+  'DOCUMENTACION.test', 'exports.GA', 'partes.map',
 ]);
 
 // Lista COMPLETA de TLD de IANA (scripts/tlds-iana.txt, el archivo tlds-alpha-by-domain.txt que publica IANA), más los
@@ -113,14 +114,84 @@ const TLDS = new Set([
     .map((l) => l.trim().toLowerCase()),
   'test', 'local', LOCAL, 'internal', 'lan', 'corp', 'home', 'invalid', 'example', 'onion',
 ]);
-// Tras una «/» no se cuenta: es el cierre de una expresión regular con banderas (`/…/i.test(x)`) o un tramo
-// de ruta; las URLs las revisa URL_HOST y las rutas de máquina RUTA_ABSOLUTA.
-const ETIQUETAS = /(?<![\w@.$/-])((?:[a-z0-9-]+\.)+[a-z0-9-]+)(?![\w-])/gi;
+// Puntos camuflados que se convierten en «.» antes de sacar los tokens: escapados, codificados en URL o en HTML, y
+// los puntos ideográficos y de ancho completo.
+const PUNTOS_CAMUFLADOS = /\\\.|%2e|&#0*46;|&#x0*2e;|&period;|[。．｡]/gi;
+/**
+ * Tokens donde buscar hosts e IPs, sin trucos de escritura: NFKC (anchos completos, ligaduras y demás formas de
+ * compatibilidad); puntos camuflados a «.»; todo lo que no sea [A-Za-z0-9.-] se vuelve espacio (`ops@zona`,
+ * `_.zona`, `$zona`, `page_v2`, `*.`, `{x}.`, `//`, `ruta/…`); los puntos repetidos también, y a cada token se le
+ * quitan puntos y guiones del inicio y del final (una IP pegada a un guion).
+ */
+const tokens = (t) =>
+  t
+    .normalize('NFKC')
+    .replace(PUNTOS_CAMUFLADOS, '.')
+    .replace(/[^A-Za-z0-9.-]/g, ' ')
+    .replace(/[.]{2,}/g, ' ')
+    .split(/\s+/)
+    .map((x) => x.replace(/^[.-]+|[.-]+$/g, ''))
+    .filter(Boolean);
+const IP_DOCUMENTACION = /^(?:192[.]0[.]2|198[.]51[.]100|203[.]0[.]113)[.]/;
+// Primer octeto de los rangos privados y de loopback: con él, una forma corta (dos o tres partes) cuenta como IP.
+const PRIMEROS_PRIVADOS = new Set([10, 100, 127, 169, 172, 192]);
+/** [valor, rara] de una parte, o null. `rara` = hex, octal o ceros a la izquierda. */
+function valorParte(p) {
+  if (/^0x[0-9a-f]+$/i.test(p)) return [parseInt(p, 16), true];
+  if (!/^\d+$/.test(p)) return null;
+  if (p.length > 1 && p[0] === '0') return [/^[0-7]+$/.test(p) ? parseInt(p, 8) : parseInt(p, 10), true];
+  return [parseInt(p, 10), false];
+}
+/**
+ * IPv4 en cualquier escritura que acepte inet_aton: de 1 a 4 partes; cada parte en decimal, octal (cero a la
+ * izquierda) o hex (0x…, con o sin ceros); las primeras n-1 partes hasta 255 y la última llena el resto. Los rangos
+ * de documentación se revisan sobre la forma canónica. Devuelve qué clase de IP es, o null.
+ */
+function comoIp(c, noSonIps) {
+  if (noSonIps.has(c)) return null;
+  const partes = c.split('.');
+  if (partes.length > 4) return null;
+  const vals = partes.map(valorParte);
+  if (vals.some((v) => !v)) return null;
+  const n = vals.length;
+  const rara = vals.some(([, r]) => r);
+  if (n === 1) {
+    const [v] = vals[0];
+    if (/^0x/i.test(c)) return v < 2 ** 32 ? 'IP en hexadecimal' : null;
+    if (v >= 2 ** 24 && v < 2 ** 32) return rara ? 'IP con ceros u octal' : 'IP como entero';
+    return null;
+  }
+  if (vals.slice(0, -1).some(([v]) => v > 255) || vals[n - 1][0] >= 256 ** (5 - n)) return null;
+  const valor = vals.slice(0, -1).reduce((a, [v], i) => a + v * 256 ** (3 - i), 0) + vals[n - 1][0];
+  const canonica = [24, 16, 8, 0].map((s) => Math.floor(valor / 2 ** s) % 256).join('.');
+  if (IP_DOCUMENTACION.test(canonica)) return null;
+  if (n === 4) return rara ? 'IP con ceros, octal o hex' : 'IP literal';
+  // Dos o tres partes con la última que no cabe en un octeto: es una IP abreviada aunque traiga ceros u octal.
+  // Va ANTES de la exención de ceros (regla de Sec, ronda 1d). Residual aceptado: a.b.0.d escrito como a.b.d
+  // (la última parte cabe en un octeto) no se detecta.
+  if (vals[0][0] !== 0 && vals[n - 1][0] > 255 && vals[n - 1][0] < 256 ** (5 - n)) return 'IP abreviada';
+  // Si no: se parece a una versión (1.2.3) o a un decimal (10.00). Solo cuenta si trae hex o si empieza como un
+  // rango privado o de loopback.
+  if (vals.some(([, r], i) => r && !/^0x/i.test(partes[i]))) return null;
+  if (rara || vals[n - 1][0] > 255 || PRIMEROS_PRIVADOS.has(vals[0][0])) return 'IP abreviada';
+  return null;
+}
+/** IPv4 del texto: cada token y, si trae guiones (un rango, una IP pegada), cada pieza. */
+function ipsV4(texto, noSonIps) {
+  const fuera = new Map();
+  for (const tok of tokens(texto)) {
+    for (const c of [tok, ...tok.split('-')]) {
+      const que = c && comoIp(c, noSonIps);
+      if (que) fuera.set(c, que);
+    }
+  }
+  return fuera;
+}
+
 // Un host que empieza con `$` es una plantilla de código (`https://${...}`), no un host.
 const URL_HOST = /[a-z][a-z0-9+.-]*:\/\/([^/\s"'`)<>:${}]+)/gi;
-// IPv4: puede cerrar una frase (la IP seguida del punto final): después no puede venir un dígito ni «.dígito».
-const IP = /(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?!\d)(?!\.\d)/g;
-const IP_DOCUMENTACION = /^(?:192\.0\.2|198\.51\.100|203\.0\.113)\./;
+/** Números que caen en el rango de una IPv4 como entero y no lo son (un `maximum` del OpenAPI). Lista cerrada. */
+const NO_SON_IPS = new Set(['100000000']);
 // IPv6: cuenta si trae «::», 5 grupos o más, o una letra hex (así una hora «08:00:00» no cuenta).
 const IPV6 = /(?<![\w:])([0-9a-f]{0,4}(?::[0-9a-f]{0,4}){2,7})(?![\w:])/gi;
 // Sin ningún dígito hex («::» suelto en código) no es una dirección.
@@ -177,22 +248,21 @@ for (const f of archivos(raiz)) {
   } else {
     const candidatos = new Set([
       ...[...t.matchAll(URL_HOST)].map((m) => m[1]),
-      ...[...t.matchAll(ETIQUETAS)]
-        .map((m) => m[1])
-        .filter((c) => !/^[\d.]+$/.test(c) && TLDS.has(c.split('.').pop().toLowerCase())),
+      ...tokens(t).filter((c) => c.includes('.') && !/^[\d.]+$/.test(c) && TLDS.has(c.split('.').pop().toLowerCase())),
     ]);
     for (const h of candidatos) {
       if (!hostPermitido(h.toLowerCase(), rel) && !NO_SON_HOSTS.has(h)) hallazgos.push(`${rel}: host fuera de la lista: ${h}`);
     }
     // La palabra suelta, fuera de pruebas (el OpenAPI la usa en prosa: «sin IP literal, … ni credenciales»; una URL
     // hacia ese host la sigue atrapando la regla de hosts).
-    if (!esPrueba(rel) && rel !== 'openapi/openapi.json' && new RegExp(`\\b${LOCAL}\\b`).test(t)) {
+    if (!esPrueba(rel) && rel !== 'openapi/openapi.json' && new RegExp(`\\b${LOCAL}\\b`, 'i').test(t.normalize('NFKC'))) {
       hallazgos.push(`${rel}: ${LOCAL} fuera de las pruebas`);
     }
-    for (const ip of new Set(t.match(IP) ?? [])) {
-      if (!IP_DOCUMENTACION.test(ip)) hallazgos.push(`${rel}: IP literal: ${ip}`);
+    // La lista de TLD de IANA es un dato (su cabecera trae un número de versión), no se revisa como texto.
+    if (rel !== 'scripts/tlds-iana.txt') {
+      for (const [c, que] of ipsV4(t, NO_SON_IPS)) hallazgos.push(`${rel}: ${que}: ${c}`);
     }
-    for (const m of t.matchAll(IPV6)) {
+    for (const m of t.normalize('NFKC').matchAll(IPV6)) {
       if (esIpv6(m[1]) && !IPV6_DOCUMENTACION.test(m[1])) hallazgos.push(`${rel}: IPv6 literal: ${m[1]}`);
     }
     for (const m of t.matchAll(RUTA_ABSOLUTA)) hallazgos.push(`${rel}: ruta absoluta: ${m[1] ?? m[2] ?? m[3]}`);

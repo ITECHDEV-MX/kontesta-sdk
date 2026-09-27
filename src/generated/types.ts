@@ -10142,7 +10142,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description `IDEMPOTENCY_KEY_REUSED`: la llave ya se usó con otro cuerpo · `IDEMPOTENCY_IN_PROGRESS`: la petición original sigue en curso (reintentar). */
+            /** @description `IDEMPOTENCY_KEY_REUSED`: la llave ya se usó con otro cuerpo · `IDEMPOTENCY_IN_PROGRESS`: la petición original sigue en curso (reintentar) · `IDEMPOTENCY_ORIGINAL_FAILED`: la original falló sin confirmar si el mensaje salió; no se reintenta con esa llave (revisar la conversación y, si hace falta, usar una nueva). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -11635,7 +11635,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description `IDEMPOTENCY_KEY_REUSED`: la llave ya se usó con otro cuerpo · `IDEMPOTENCY_IN_PROGRESS`: la petición original sigue en curso (reintentar). */
+            /** @description `IDEMPOTENCY_KEY_REUSED`: la llave ya se usó con otro cuerpo · `IDEMPOTENCY_IN_PROGRESS`: la petición original sigue en curso (reintentar) · `IDEMPOTENCY_ORIGINAL_FAILED`: la original falló sin confirmar si el mensaje salió; no se reintenta con esa llave (revisar la conversación y, si hace falta, usar una nueva). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -12008,7 +12008,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description `IDEMPOTENCY_KEY_REUSED`: la llave ya se usó con otro cuerpo · `IDEMPOTENCY_IN_PROGRESS`: la petición original sigue en curso (reintentar). */
+            /** @description `IDEMPOTENCY_KEY_REUSED`: la llave ya se usó con otro cuerpo · `IDEMPOTENCY_IN_PROGRESS`: la petición original sigue en curso (reintentar) · `IDEMPOTENCY_ORIGINAL_FAILED`: la original falló sin confirmar si el mensaje salió; no se reintenta con esa llave (revisar la conversación y, si hace falta, usar una nueva). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -14282,7 +14282,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description `IDEMPOTENCY_KEY_REUSED`: la llave ya se usó con otro cuerpo · `IDEMPOTENCY_IN_PROGRESS`: la petición original sigue en curso (reintentar). */
+            /** @description `IDEMPOTENCY_KEY_REUSED`: la llave ya se usó con otro cuerpo · `IDEMPOTENCY_IN_PROGRESS`: la petición original sigue en curso (reintentar) · `IDEMPOTENCY_ORIGINAL_FAILED`: la original falló sin confirmar si el mensaje salió; no se reintenta con esa llave (revisar la conversación y, si hace falta, usar una nueva). */
             409: {
                 headers: {
                     [name: string]: unknown;
