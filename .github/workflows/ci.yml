@@ -1,0 +1,55 @@
+# CI del repo público de @kontesta/sdk. Corre en cada PR y en main.
+#
+# Seguridad: `pull_request` (nunca `pull_request_target`): un PR de un fork corre con token de
+# solo lectura y sin secretos. Acciones fijadas por SHA. Permisos mínimos.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  revisar:
+    name: revisar
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # gitleaks revisa toda la historia
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - name: Sin secretos (gitleaks)
+        run: >
+          docker run --rm -v "$PWD:/repo"
+          zricethezav/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854
+          git /repo --redact --verbose
+
+      - name: Pruebas
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Lo que saldría a npm, exacto y sin rutas fuera del OpenAPI público
+        run: npm run check:pack
+
+      # Lista PERMITIDA: archivos, rutas de la API, hosts, IPs y rutas de máquina. Va después del build
+      # para revisar también dist/.
+      - name: Verificación de lista permitida
+        run: npm run verificar

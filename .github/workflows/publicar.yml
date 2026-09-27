@@ -1,0 +1,104 @@
+# Publica @kontesta/sdk en npm. SOLO por tag `v<versión>` creado sobre main.
+#
+# Dos jobs. `build` construye y empaca SIN permiso de OIDC (npm ci, pruebas, verificación y `npm pack`), y
+# sube el .tgz como artefacto. `publicar` no instala nada: descarga ese .tgz y lo publica con
+# `npm publish <tgz> --provenance`. Solo ese job tiene `id-token: write`.
+#
+# Trusted publishing (OIDC) + provenance exigen runner hospedado por GitHub y repo público
+# (docs.npmjs.com/trusted-publishers). npm solo deja configurar el trusted publisher de un paquete que
+# YA EXISTE (docs.npmjs.com/cli/v11/commands/npm-trust). Para la primera publicación el environment `npm`
+# trae el secreto NPM_TOKEN_PRIMERA_PUBLICACION; después se configura `npm trust`, se borra el secreto,
+# se revoca el token y se activa «Require two-factor authentication and disallow tokens».
+name: Publicar en npm
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publicar
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      tgz: ${{ steps.pack.outputs.tgz }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+
+      - name: El tag coincide con la versión y está en main
+        run: |
+          v="$(node -p "require('./package.json').version")"
+          [ "${GITHUB_REF_NAME}" = "v${v}" ] || { echo "::error::tag ${GITHUB_REF_NAME} ≠ versión ${v}"; exit 1; }
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD || { echo "::error::el tag no está sobre main"; exit 1; }
+
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run build
+      - run: npm run check:pack
+      - name: Verificación de lista permitida (incluye dist/)
+        run: npm run verificar
+
+      - name: Empacar
+        id: pack
+        run: |
+          tgz="$(npm pack --ignore-scripts --silent)"
+          echo "tgz=${tgz}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: paquete
+          path: ${{ steps.pack.outputs.tgz }}
+          if-no-files-found: error
+          retention-days: 7
+
+  publicar:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write # OIDC para trusted publishing y la firma de provenance
+    steps:
+      # Node 24 trae un npm que ya soporta trusted publishing. En este job (el único con OIDC) no se instala
+      # nada del registro: solo se verifica la versión.
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Node 22.14.0 o más nuevo y npm 11.5.1 o más nuevo (trusted publishing)
+        run: |
+          node -e "
+            const ge = (v, m) => { const a = v.split('.').map(Number); for (let i = 0; i < 3; i++) { if (a[i] !== m[i]) return a[i] > m[i]; } return true; };
+            const npm = require('child_process').execSync('npm --version').toString().trim();
+            if (!ge(process.versions.node, [22, 14, 0])) { console.error('Node ' + process.version + ' < 22.14.0'); process.exit(1); }
+            if (!ge(npm, [11, 5, 1])) { console.error('npm ' + npm + ' < 11.5.1'); process.exit(1); }
+            console.log('node ' + process.version + ' · npm ' + npm);
+          "
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: paquete
+
+      - name: Publicar con provenance
+        env:
+          # Solo existe para la primera publicación; con trusted publishing configurado queda vacío y npm usa OIDC.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_PRIMERA_PUBLICACION }}
+        run: npm publish "./${{ needs.build.outputs.tgz }}" --provenance --access public

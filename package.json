@@ -1,0 +1,74 @@
+{
+  "name": "@kontesta/sdk",
+  "version": "1.0.0",
+  "description": "SDK oficial de TypeScript para la API pública de Kontesta: conversaciones de WhatsApp, leads, embudos, automatizaciones, plantillas, métricas y webhooks, con verificación de firma incluida.",
+  "license": "MIT",
+  "author": "ITechdev MX, S.A. de C.V.",
+  "homepage": "https://kontesta.mx/integracion",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ITECHDEV-MX/kontesta-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ITECHDEV-MX/kontesta-sdk/issues"
+  },
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/*.js",
+    "dist/*.mjs",
+    "dist/*.d.ts",
+    "dist/*.d.mts",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "kontesta",
+    "whatsapp",
+    "whatsapp-business",
+    "crm",
+    "leads",
+    "webhooks",
+    "sdk",
+    "api",
+    "typescript",
+    "mexico"
+  ],
+  "scripts": {
+    "gen": "openapi-typescript openapi/openapi.json --output src/generated/types.ts",
+    "build": "tsup",
+    "test": "vitest run",
+    "check:pack": "node scripts/check-pack.mjs",
+    "verificar": "node scripts/verificar-publico.mjs ."
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.0",
+    "openapi-typescript": "^7.13.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}
