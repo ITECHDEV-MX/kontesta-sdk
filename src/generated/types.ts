@@ -3941,7 +3941,7 @@ export interface paths {
         };
         /**
          * Reporte de citas (ocupación · no-show · ingresos · rankings)
-         * @description Rango [from, to) en tz (to EXCLUSIVO, cap 92 días). Ocupación = horas reservadas (todo estado menos CANCELLED; NO_SHOW ocupa) / horas disponibles configuradas (null si no hay disponibilidad). noShowRate = NO_SHOW/(COMPLETED+NO_SHOW). Ingresos SIN doble conteo: cobrado (PaymentLink PAID), cubiertoPorBono APARTE, pendiente (TOTAL sin pagar). Filtros resourceId/appointmentTypeId acotan todo.
+         * @description Rango [from, to) en tz (to EXCLUSIVO, cap 92 días). Ocupación = horas reservadas (todo estado menos CANCELLED; NO_SHOW ocupa) / horas disponibles configuradas (null si no hay disponibilidad). noShowRate = NO_SHOW/(COMPLETED+NO_SHOW). Ingresos SIN doble conteo: cobrado (PaymentLink PAID), cubiertoPorBono APARTE, pendiente (TOTAL sin pagar). Filtros resourceId/appointmentTypeId acotan todo. Solo OWNER/ADMIN (lleva ingreso por profesional): una sesión AGENT/VIEWER recibe 403.
          */
         get: operations["ReportsController_appointments"];
         put?: never;
@@ -4254,7 +4254,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Equipos del negocio con sus miembros */
+        /**
+         * Equipos del negocio con sus miembros
+         * @description OWNER/ADMIN (y API keys con `teams:read`): cada miembro con `{ id, name, email }`. AGENT/VIEWER: el mismo arreglo con `email: ""` — sin correo.
+         */
         get: operations["TeamsController_list"];
         put?: never;
         /** Crear un equipo (auditado) */
@@ -4573,7 +4576,7 @@ export interface components {
              * @example FORBIDDEN
              * @enum {string}
              */
-            error: "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "TOKEN_EXPIRED" | "TOKEN_REUSED" | "TENANT_NOT_RESOLVED" | "TENANT_MISMATCH" | "FORBIDDEN" | "CROSS_TENANT_DENIED" | "PLAN_LIMIT_EXCEEDED" | "QUOTA_EXCEEDED" | "FEATURE_NOT_IN_PLAN" | "PAYMENT_REQUIRED" | "TENANT_SUSPENDED" | "PROVIDER_ERROR" | "INVALID_SIGNATURE" | "REPLAY_DETECTED" | "DUPLICATE_EVENT" | "INVALID_OAUTH_STATE" | "WABA_ALREADY_CLAIMED" | "ONBOARDING_FAILED" | "AUTOMATION_INVALID" | "APPOINTMENT_SLOT_UNAVAILABLE" | "LOYALTY_INVALID" | "LOYALTY_PROGRAM_NOT_FOUND" | "LOYALTY_MEMBER_BLOCKED" | "LOYALTY_INSUFFICIENT_BALANCE" | "RAG_DISABLED" | "RAG_EMBED_NOT_CONFIGURED" | "RAG_SOURCE_NOT_FOUND" | "MESSAGE_NOT_AUDIO" | "AI_STT_NOT_CONFIGURED" | "AI_INTELLIGENCE_NOT_CONFIGURED" | "COPILOT_DISABLED" | "AI_CHAT_NOT_CONFIGURED" | "AI_REWRITE_TOO_LONG" | "AI_PLATFORM_CAP" | "AI_INSIGHT_TOO_SOON" | "PLATFORM_CONFIG_MISSING" | "APP_VERSION_UNSUPPORTED" | "MAINTENANCE" | "USER_SESSION_REQUIRED" | "INVALID_PAYLOAD" | "PAYLOAD_TOO_LARGE" | "SCREENSHOT_UNSUPPORTED" | "SCREENSHOT_TOO_LARGE" | "CHANNELS_DISABLED" | "INVALID_STATE" | "INCOMPLETE_SCOPES" | "PAGE_ALREADY_CLAIMED" | "NO_PAGES_GRANTED" | "META_UNAVAILABLE" | "CHANNEL_CAPABILITY_MISSING" | "CHANNEL_OPS_UNSUPPORTED" | "TEXT_TOO_LONG" | "CHANNEL_DISCONNECTED" | "CALLING_DISABLED" | "CALLING_COEXISTENCE_UNSUPPORTED" | "CALLING_NOT_ENABLED_ON_NUMBER" | "CALL_PERMISSION_REQUIRED" | "CALL_PERMISSION_RATE_LIMITED" | "CALL_PERMISSION_ALREADY_GRANTED" | "CALL_PERMISSION_TEMPLATE_REQUIRED" | "CALL_ALREADY_CLAIMED" | "CALL_AGENT_BUSY" | "CALL_NOT_ACTIVE" | "CALL_ACCEPT_FAILED" | "CALL_RECORDING_OWNER_ONLY" | "CALL_RECORDING_NOT_ALLOWED" | "CALLING_CAP_REACHED" | "VALIDATION_FAILED" | "NOT_FOUND" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL" | "CONFIG_ERROR";
+            error: "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "TOKEN_EXPIRED" | "TOKEN_REUSED" | "TENANT_NOT_RESOLVED" | "TENANT_MISMATCH" | "FORBIDDEN" | "CROSS_TENANT_DENIED" | "PLAN_LIMIT_EXCEEDED" | "QUOTA_EXCEEDED" | "FEATURE_NOT_IN_PLAN" | "PAYMENT_REQUIRED" | "TENANT_SUSPENDED" | "PROVIDER_ERROR" | "INVALID_SIGNATURE" | "REPLAY_DETECTED" | "DUPLICATE_EVENT" | "INVALID_OAUTH_STATE" | "WABA_ALREADY_CLAIMED" | "ONBOARDING_FAILED" | "AUTOMATION_INVALID" | "APPOINTMENT_SLOT_UNAVAILABLE" | "LOYALTY_INVALID" | "LOYALTY_PROGRAM_NOT_FOUND" | "LOYALTY_MEMBER_BLOCKED" | "LOYALTY_INSUFFICIENT_BALANCE" | "WALLET_NOT_READY" | "RAG_DISABLED" | "RAG_EMBED_NOT_CONFIGURED" | "RAG_SOURCE_NOT_FOUND" | "MESSAGE_NOT_AUDIO" | "AI_STT_NOT_CONFIGURED" | "AI_INTELLIGENCE_NOT_CONFIGURED" | "COPILOT_DISABLED" | "AI_CHAT_NOT_CONFIGURED" | "AI_REWRITE_TOO_LONG" | "AI_PLATFORM_CAP" | "AI_INSIGHT_TOO_SOON" | "PLATFORM_CONFIG_MISSING" | "APP_VERSION_UNSUPPORTED" | "MAINTENANCE" | "USER_SESSION_REQUIRED" | "INVALID_PAYLOAD" | "PAYLOAD_TOO_LARGE" | "SCREENSHOT_UNSUPPORTED" | "SCREENSHOT_TOO_LARGE" | "CHANNELS_DISABLED" | "INVALID_STATE" | "INCOMPLETE_SCOPES" | "PAGE_ALREADY_CLAIMED" | "NO_PAGES_GRANTED" | "META_UNAVAILABLE" | "CHANNEL_CAPABILITY_MISSING" | "CHANNEL_OPS_UNSUPPORTED" | "TEXT_TOO_LONG" | "CHANNEL_DISCONNECTED" | "CALLING_DISABLED" | "CALLING_COEXISTENCE_UNSUPPORTED" | "CALLING_NOT_ENABLED_ON_NUMBER" | "CALL_PERMISSION_REQUIRED" | "CALL_PERMISSION_RATE_LIMITED" | "CALL_PERMISSION_ALREADY_GRANTED" | "CALL_PERMISSION_TEMPLATE_REQUIRED" | "CALL_ALREADY_CLAIMED" | "CALL_AGENT_BUSY" | "CALL_NOT_ACTIVE" | "CALL_ACCEPT_FAILED" | "CALL_RECORDING_OWNER_ONLY" | "CALL_RECORDING_NOT_ALLOWED" | "CALLING_CAP_REACHED" | "VALIDATION_FAILED" | "NOT_FOUND" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL" | "CONFIG_ERROR";
             /** @description Mensaje legible (string o lista de errores de validación). */
             message: string | string[];
             /** @description Correlación (logs). */
@@ -10177,7 +10180,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "open" | "closed" | "all";
-                /** @description `me` | `unassigned` | `<userId>` (`me` = principal autenticado) */
+                /** @description `me` | `unassigned` | `<userId>` (`me` = principal autenticado). Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`. */
                 assignedTo?: string;
                 /** @description Canal del hilo: `whatsapp` | `instagram` | `messenger`. Se convierte con `toChannelEnum()` (fail-closed) al enum de la base. */
                 channel?: "whatsapp" | "instagram" | "messenger";
@@ -10307,7 +10310,7 @@ export interface operations {
     ConversationsController_counts: {
         parameters: {
             query?: {
-                /** @description `me` | `unassigned` | `<userId>` (`me` = principal autenticado). Es el alcance «Mías» del segmentado. */
+                /** @description `me` | `unassigned` | `<userId>` (`me` = principal autenticado). Es el alcance «Mías» del segmentado. Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`. */
                 assignedTo?: string;
                 /** @description `<teamId>` para la bandeja de un equipo (alcance «Mi equipo»); `none` para las que no están en ninguno. */
                 teamId?: string;
@@ -15727,7 +15730,7 @@ export interface operations {
     TasksController_listMine: {
         parameters: {
             query?: {
-                /** @description Filtra por responsable: `me` (la sesión) | `unassigned` | `<userId>`. */
+                /** @description Filtra por responsable: `me` (la sesión) | `unassigned` | `<userId>`. Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`. */
                 assignedTo?: string;
                 /** @description Solo tareas con `dueAt` < esta fecha (ISO-8601) — vencen antes de. */
                 dueBefore?: string;

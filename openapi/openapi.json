@@ -148,6 +148,7 @@
               "LOYALTY_PROGRAM_NOT_FOUND",
               "LOYALTY_MEMBER_BLOCKED",
               "LOYALTY_INSUFFICIENT_BALANCE",
+              "WALLET_NOT_READY",
               "RAG_DISABLED",
               "RAG_EMBED_NOT_CONFIGURED",
               "RAG_SOURCE_NOT_FOUND",
@@ -13920,7 +13921,7 @@
             }
           },
           {
-            "description": "`me` | `unassigned` | `<userId>` (`me` = principal autenticado)",
+            "description": "`me` | `unassigned` | `<userId>` (`me` = principal autenticado). Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`.",
             "in": "query",
             "name": "assignedTo",
             "required": false,
@@ -14265,7 +14266,7 @@
         "operationId": "ConversationsController_counts",
         "parameters": [
           {
-            "description": "`me` | `unassigned` | `<userId>` (`me` = principal autenticado). Es el alcance «Mías» del segmentado.",
+            "description": "`me` | `unassigned` | `<userId>` (`me` = principal autenticado). Es el alcance «Mías» del segmentado. Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`.",
             "in": "query",
             "name": "assignedTo",
             "required": false,
@@ -25094,7 +25095,7 @@
     },
     "/v1/reports/appointments": {
       "get": {
-        "description": "Rango [from, to) en tz (to EXCLUSIVO, cap 92 días). Ocupación = horas reservadas (todo estado menos CANCELLED; NO_SHOW ocupa) / horas disponibles configuradas (null si no hay disponibilidad). noShowRate = NO_SHOW/(COMPLETED+NO_SHOW). Ingresos SIN doble conteo: cobrado (PaymentLink PAID), cubiertoPorBono APARTE, pendiente (TOTAL sin pagar). Filtros resourceId/appointmentTypeId acotan todo.",
+        "description": "Rango [from, to) en tz (to EXCLUSIVO, cap 92 días). Ocupación = horas reservadas (todo estado menos CANCELLED; NO_SHOW ocupa) / horas disponibles configuradas (null si no hay disponibilidad). noShowRate = NO_SHOW/(COMPLETED+NO_SHOW). Ingresos SIN doble conteo: cobrado (PaymentLink PAID), cubiertoPorBono APARTE, pendiente (TOTAL sin pagar). Filtros resourceId/appointmentTypeId acotan todo. Solo OWNER/ADMIN (lleva ingreso por profesional): una sesión AGENT/VIEWER recibe 403.",
         "operationId": "ReportsController_appointments",
         "parameters": [
           {
@@ -26278,7 +26279,7 @@
         "operationId": "TasksController_listMine",
         "parameters": [
           {
-            "description": "Filtra por responsable: `me` (la sesión) | `unassigned` | `<userId>`.",
+            "description": "Filtra por responsable: `me` (la sesión) | `unassigned` | `<userId>`. Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`.",
             "in": "query",
             "name": "assignedTo",
             "required": false,
@@ -26513,6 +26514,7 @@
     },
     "/v1/teams": {
       "get": {
+        "description": "OWNER/ADMIN (y API keys con `teams:read`): cada miembro con `{ id, name, email }`. AGENT/VIEWER: el mismo arreglo con `email: \"\"` — sin correo.",
         "operationId": "TeamsController_list",
         "parameters": [],
         "responses": {
