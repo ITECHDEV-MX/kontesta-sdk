@@ -299,6 +299,37 @@
         ],
         "type": "object"
       },
+      "BulkContactsDto": {
+        "properties": {
+          "action": {
+            "enum": [
+              "addTag",
+              "removeTag",
+              "archive",
+              "unarchive"
+            ],
+            "type": "string"
+          },
+          "ids": {
+            "description": "Ids de contacto (máximo 200).",
+            "items": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tagId": {
+            "description": "Para `addTag` / `removeTag`.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "ids",
+          "action"
+        ],
+        "type": "object"
+      },
       "BulkConversationsDto": {
         "properties": {
           "action": {
@@ -4793,7 +4824,7 @@
     }
   },
   "info": {
-    "description": "API pública /v1 de Kontesta: la superficie que se alcanza con una API key.\n\nEste documento trae solo las 326 operaciones que una llave puede llamar. Guía completa, ejemplos en PHP, C#, TypeScript y Python, y catálogo de eventos: https://kontesta.mx/integracion\n\n## Autenticación\nCabecera `X-Api-Key: ktk_<prefijo>.<secreto>` (también se acepta como `Authorization: Bearer ktk_...`). La llave se crea en la app, en Ajustes → Llaves de API.\n\n## Permisos\nCada operación exige los scopes de `x-required-scopes`. Todo lo que no se concede se niega: sin el scope la respuesta es `403`.\n\n## Límites\nVentana de un minuto por cuenta, con cubetas separadas para lectura y escritura. Cada respuesta trae `X-RateLimit-Limit/Remaining/Reset`; al pasarte, `429` + `Retry-After`.\n\n## Errores\nCuerpo uniforme `{ statusCode, error, message, requestId }`.\n\n## Versionado\n`/v1` solo cambia de forma aditiva; un cambio incompatible abre `/v2`.",
+    "description": "API pública /v1 de Kontesta: la superficie que se alcanza con una API key.\n\nEste documento trae solo las 328 operaciones que una llave puede llamar. Guía completa, ejemplos en PHP, C#, TypeScript y Python, y catálogo de eventos: https://kontesta.mx/integracion\n\n## Autenticación\nCabecera `X-Api-Key: ktk_<prefijo>.<secreto>` (también se acepta como `Authorization: Bearer ktk_...`). La llave se crea en la app, en Ajustes → Llaves de API.\n\n## Permisos\nCada operación exige los scopes de `x-required-scopes`. Todo lo que no se concede se niega: sin el scope la respuesta es `403`.\n\n## Límites\nVentana de un minuto por cuenta, con cubetas separadas para lectura y escritura. Cada respuesta trae `X-RateLimit-Limit/Remaining/Reset`; al pasarte, `429` + `Retry-After`.\n\n## Errores\nCuerpo uniforme `{ statusCode, error, message, requestId }`.\n\n## Versionado\n`/v1` solo cambia de forma aditiva; un cambio incompatible abre `/v2`.",
     "title": "Kontesta API",
     "version": "1.0"
   },
@@ -6944,6 +6975,83 @@
         ]
       }
     },
+    "/v1/appointments/calendar/day": {
+      "get": {
+        "description": "ResourceDayDto { date, tz, columns[] } del día `date` (YYYY-MM-DD) en la zona del NEGOCIO. Una columna por recurso activo ordenado por nombre (más los inactivos con cita ese día); «Sin asignar» (resource=null) al final solo si hay citas sin recurso y sin filtro. Cada columna: openIntervals (ISO, de AvailabilityRule) y appointments (AppointmentDetailDto: AppointmentDto + lastEvents, fromWaitlist, contactVerifiedAt, rebookedFromId, nextOffer). Excluye CANCELLED. `resourceIds` (coma) limita las columnas. Solo lectura.",
+        "operationId": "AppointmentsController_day",
+        "parameters": [
+          {
+            "description": "Día YYYY-MM-DD en la zona del negocio.",
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "example": "2026-09-29",
+              "pattern": "/^\\d{4}-\\d{2}-\\d{2}$/",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Recursos (personas/cabinas) separados por coma, máx. 50. Con filtro no se incluye «Sin asignar».",
+            "in": "query",
+            "name": "resourceIds",
+            "required": false,
+            "schema": {
+              "example": "res_a,res_b",
+              "maxLength": 3250,
+              "pattern": "/^[A-Za-z0-9_-]{1,64}(,[A-Za-z0-9_-]{1,64})*$/",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ResourceDayDto (date + tz + columns[]).",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Vista del día por recurso (columnas por persona/cabina)",
+        "tags": [
+          "Citas y agenda"
+        ],
+        "x-required-scopes": [
+          "appointments:read"
+        ]
+      }
+    },
     "/v1/appointments/templates": {
       "get": {
         "description": "Una por kind (confirmación, recordatorio 24 h, recordatorio 1 h, reprogramación, cancelación) con su estado real en Meta. `NOT_PROVISIONED` = aún no se activaron los recordatorios.",
@@ -7651,7 +7759,7 @@
         ],
         "responses": {
           "200": {
-            "description": "AppointmentDto.",
+            "description": "AppointmentDetailDto (AppointmentDto + lastEvents, fromWaitlist, contactVerifiedAt, rebookedFromId, nextOffer).",
             "headers": {
               "X-RateLimit-Limit": {
                 "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
@@ -12568,6 +12676,16 @@
             }
           },
           {
+            "description": "Sólo contactos que tienen al menos una conversación en este número (`PhoneNumber.id`, el `id` del número en Ajustes › Números).",
+            "in": "query",
+            "name": "phoneNumberId",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
             "description": "Incluye los archivados.",
             "in": "query",
             "name": "includeArchived",
@@ -12731,6 +12849,75 @@
         ],
         "x-required-scopes": [
           "contacts:read"
+        ]
+      }
+    },
+    "/v1/contacts/bulk": {
+      "post": {
+        "operationId": "ContactDirectoryController_bulk",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkContactsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Etiquetar, quitar etiqueta, archivar o desarchivar hasta 200 contactos; responde por id qué cambió",
+        "tags": [
+          "Ficha de cliente"
+        ],
+        "x-required-scopes": [
+          "contacts:write"
         ]
       }
     },
@@ -13132,6 +13319,16 @@
                 "type": "string"
               },
               "type": "array"
+            }
+          },
+          {
+            "description": "Sólo contactos que tienen al menos una conversación en este número (`PhoneNumber.id`, el `id` del número en Ajustes › Números).",
+            "in": "query",
+            "name": "phoneNumberId",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
             }
           },
           {
@@ -25065,6 +25262,21 @@
               "enum": [
                 "APPOINTMENT",
                 "PACKAGE_SALE"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Capturas tardías del personal (citas que se registraron cuando ya habían empezado): `include` (default) las cuenta, `exclude` las quita del reporte y `only` deja solo esas.",
+            "in": "query",
+            "name": "staffCapture",
+            "required": false,
+            "schema": {
+              "default": "include",
+              "enum": [
+                "include",
+                "exclude",
+                "only"
               ],
               "type": "string"
             }
