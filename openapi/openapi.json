@@ -148,6 +148,7 @@
               "LOYALTY_PROGRAM_NOT_FOUND",
               "LOYALTY_MEMBER_BLOCKED",
               "LOYALTY_INSUFFICIENT_BALANCE",
+              "WALLET_NOT_READY",
               "RAG_DISABLED",
               "RAG_EMBED_NOT_CONFIGURED",
               "RAG_SOURCE_NOT_FOUND",
