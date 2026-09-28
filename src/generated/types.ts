@@ -399,6 +399,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/appointments/calendar/day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Vista del día por recurso (columnas por persona/cabina)
+         * @description ResourceDayDto { date, tz, columns[] } del día `date` (YYYY-MM-DD) en la zona del NEGOCIO. Una columna por recurso activo ordenado por nombre (más los inactivos con cita ese día); «Sin asignar» (resource=null) al final solo si hay citas sin recurso y sin filtro. Cada columna: openIntervals (ISO, de AvailabilityRule) y appointments (AppointmentDetailDto: AppointmentDto + lastEvents, fromWaitlist, contactVerifiedAt, rebookedFromId, nextOffer). Excluye CANCELLED. `resourceIds` (coma) limita las columnas. Solo lectura.
+         */
+        get: operations["AppointmentsController_day"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/appointments/templates": {
         parameters: {
             query?: never;
@@ -1521,6 +1541,23 @@ export interface paths {
         get: operations["BlockedContactsController_list"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Etiquetar, quitar etiqueta, archivar o desarchivar hasta 200 contactos; responde por id qué cambió */
+        post: operations["ContactDirectoryController_bulk"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4575,6 +4612,14 @@ export interface components {
              */
             tz?: string;
         };
+        BulkContactsDto: {
+            /** @enum {string} */
+            action: "addTag" | "removeTag" | "archive" | "unarchive";
+            /** @description Ids de contacto (máximo 200). */
+            ids: string[];
+            /** @description Para `addTag` / `removeTag`. */
+            tagId?: string;
+        };
         BulkConversationsDto: {
             /** @enum {string} */
             action: "close" | "reopen" | "assign" | "read" | "tag" | "untag" | "snooze";
@@ -7052,6 +7097,38 @@ export interface operations {
             429: components["responses"]["TooManyRequests"];
         };
     };
+    AppointmentsController_day: {
+        parameters: {
+            query: {
+                /** @description Día YYYY-MM-DD en la zona del negocio. */
+                date: string;
+                /** @description Recursos (personas/cabinas) separados por coma, máx. 50. Con filtro no se incluye «Sin asignar». */
+                resourceIds?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ResourceDayDto (date + tz + columns[]). */
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
     AppointmentTemplatesController_overview: {
         parameters: {
             query?: never;
@@ -7377,7 +7454,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description AppointmentDto. */
+            /** @description AppointmentDetailDto (AppointmentDto + lastEvents, fromWaitlist, contactVerifiedAt, rebookedFromId, nextOffer). */
             200: {
                 headers: {
                     /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
@@ -9596,6 +9673,8 @@ export interface operations {
                 tagId?: string;
                 /** @description Filtro por campo personalizado, `fieldId:valor`. Repetible; se combinan con Y. */
                 field?: string[];
+                /** @description Sólo contactos que tienen al menos una conversación en este número (`PhoneNumber.id`, el `id` del número en Ajustes › Números). */
+                phoneNumberId?: string;
                 /** @description Incluye los archivados. */
                 includeArchived?: boolean;
                 limit?: number;
@@ -9639,6 +9718,38 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactDirectoryController_bulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkContactsDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -9830,6 +9941,8 @@ export interface operations {
                 tagId?: string;
                 /** @description Filtro por campo personalizado, `fieldId:valor`. Repetible; se combinan con Y. */
                 field?: string[];
+                /** @description Sólo contactos que tienen al menos una conversación en este número (`PhoneNumber.id`, el `id` del número en Ajustes › Números). */
+                phoneNumberId?: string;
                 /** @description Incluye los archivados. */
                 includeArchived?: boolean;
                 limit?: number;
@@ -15169,6 +15282,8 @@ export interface operations {
                 userId?: string;
                 /** @description Filtra por origen del devengo. */
                 sourceType?: "APPOINTMENT" | "PACKAGE_SALE";
+                /** @description Capturas tardías del personal (citas que se registraron cuando ya habían empezado): `include` (default) las cuenta, `exclude` las quita del reporte y `only` deja solo esas. */
+                staffCapture?: "include" | "exclude" | "only";
             };
             header?: never;
             path?: never;
