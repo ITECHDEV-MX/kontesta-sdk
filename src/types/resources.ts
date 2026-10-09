@@ -33,6 +33,10 @@ export interface ChannelCapabilities {
   outOfWindowTemplates: 'none' | 'whatsapp' | 'messenger_utility';
   mediaOut: boolean;
   reactionsOut: boolean;
+  /** «Botones o lista» desde la bandeja (C2): solo WhatsApp. */
+  interactiveOut: boolean;
+  /** Botones de respuesta (quick replies de Meta) salientes: IG/FB con la bandera `channels.meta.interactions`. */
+  quickRepliesOut?: boolean;
   deleteInInbox: boolean;
   reopen: 'template' | 'human_agent_7d';
   paidOutOfWindow: 'none' | 'marketing_messages';

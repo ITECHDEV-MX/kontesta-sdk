@@ -3487,7 +3487,7 @@ export interface paths {
         put?: never;
         /**
          * Subir un archivo para enviarlo por WhatsApp
-         * @description Sube la imagen o el documento a Meta y devuelve su `mediaId`, que se manda luego en POST /v1/conversations/:id/messages con kind=image|document|audio|video. El archivo NO se guarda de nuestro lado: duplicar PII del cliente sin necesidad. Límites: imagen 5 MB, documento/video/audio 16 MB. El contenido se verifica por firma (magic bytes) contra el MIME declarado: un ".mp4" que no es video es 400 MEDIA_CONTENT_MISMATCH. Nota de voz: máximo 2 min 30 s (el excedente se recorta). SIN conversación: manda `phoneNumberId` (id interno del número de envío) en lugar de `conversationId`; solo kind=image|video|document con los límites del encabezado de plantilla (JPEG/PNG 5 MB, MP4/3GPP 16 MB, PDF 16 MB). Exactamente uno de los dos. El `mediaId` solo sirve para enviar desde ese número y caduca en 30 días (`expiresAt`). Cuota: 20 por minuto por persona o llave (429 MEDIA_UPLOAD_RATE_LIMITED con `retryAfter`).
+         * @description Sube la imagen o el documento a Meta y devuelve su `mediaId`, que se manda luego en POST /v1/conversations/:id/messages con kind=image|document|audio|video. El archivo NO se guarda de nuestro lado: duplicar PII del cliente sin necesidad. Límites: imagen 5 MB, documento/video/audio 16 MB. El contenido se verifica por firma (magic bytes) contra el MIME declarado: un ".mp4" que no es video es 400 MEDIA_CONTENT_MISMATCH. Nota de voz: máximo 2 min 30 s (el excedente se recorta). SIN conversación: manda `phoneNumberId` (id interno del número de envío) en lugar de `conversationId`; solo kind=image|video|document con los límites del encabezado de plantilla (JPEG/PNG 5 MB, MP4/3GPP 16 MB, PDF 16 MB). Exactamente uno de los dos. El `mediaId` solo sirve para enviar desde ese número y caduca en 30 días (`expiresAt`). Cuota: 20 por minuto por persona o llave (429 MEDIA_UPLOAD_RATE_LIMITED con `retryAfter`). INSTAGRAM/MESSENGER (P1-7, detrás de la bandera de plataforma `messenger.mediaOut.enabled`; apagada ⇒ 422 CHANNEL_MEDIA_DISABLED): el archivo se guarda en Kontesta (Meta lo descarga por una liga firmada de 15 min al enviar) y `mediaId` es una referencia firmada `kmo1.…` atada a ESA conversación y a ese `kind`, vigente 24 h (`expiresAt`), con `phoneNumberId: null` y `channel`. Límites: imagen JPG/PNG 8 MB; video MP4 16 MB; audio (cualquier grabación) 16 MB, se convierte a M4A; documento: Instagram solo PDF, Messenger PDF/Office/txt/csv, 16 MB. Instagram y Messenger no admiten pie de foto: el texto va en un mensaje aparte.
          */
         post: operations["MediaController_upload"];
         delete?: never;
@@ -3941,7 +3941,7 @@ export interface paths {
         };
         /**
          * Reporte de citas (ocupación · no-show · ingresos · rankings)
-         * @description Rango [from, to) en tz (to EXCLUSIVO, cap 92 días). Ocupación = horas reservadas (todo estado menos CANCELLED; NO_SHOW ocupa) / horas disponibles configuradas (null si no hay disponibilidad). noShowRate = NO_SHOW/(COMPLETED+NO_SHOW). Ingresos SIN doble conteo: cobrado (PaymentLink PAID), cubiertoPorBono APARTE, pendiente (TOTAL sin pagar). Filtros resourceId/appointmentTypeId acotan todo.
+         * @description Rango [from, to) en tz (to EXCLUSIVO, cap 92 días). Ocupación = horas reservadas (todo estado menos CANCELLED; NO_SHOW ocupa) / horas disponibles configuradas (null si no hay disponibilidad). noShowRate = NO_SHOW/(COMPLETED+NO_SHOW). Ingresos SIN doble conteo: cobrado (PaymentLink PAID), cubiertoPorBono APARTE, pendiente (TOTAL sin pagar). Filtros resourceId/appointmentTypeId acotan todo. Solo OWNER/ADMIN (lleva ingreso por profesional): una sesión AGENT/VIEWER recibe 403.
          */
         get: operations["ReportsController_appointments"];
         put?: never;
@@ -4254,7 +4254,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Equipos del negocio con sus miembros */
+        /**
+         * Equipos del negocio con sus miembros
+         * @description OWNER/ADMIN (y API keys con `teams:read`): cada miembro con `{ id, name, email }`. AGENT/VIEWER: el mismo arreglo con `email: ""` — sin correo.
+         */
         get: operations["TeamsController_list"];
         put?: never;
         /** Crear un equipo (auditado) */
@@ -4573,7 +4576,7 @@ export interface components {
              * @example FORBIDDEN
              * @enum {string}
              */
-            error: "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "TOKEN_EXPIRED" | "TOKEN_REUSED" | "TENANT_NOT_RESOLVED" | "TENANT_MISMATCH" | "FORBIDDEN" | "CROSS_TENANT_DENIED" | "PLAN_LIMIT_EXCEEDED" | "QUOTA_EXCEEDED" | "FEATURE_NOT_IN_PLAN" | "PAYMENT_REQUIRED" | "TENANT_SUSPENDED" | "PROVIDER_ERROR" | "INVALID_SIGNATURE" | "REPLAY_DETECTED" | "DUPLICATE_EVENT" | "INVALID_OAUTH_STATE" | "WABA_ALREADY_CLAIMED" | "ONBOARDING_FAILED" | "AUTOMATION_INVALID" | "APPOINTMENT_SLOT_UNAVAILABLE" | "LOYALTY_INVALID" | "LOYALTY_PROGRAM_NOT_FOUND" | "LOYALTY_MEMBER_BLOCKED" | "LOYALTY_INSUFFICIENT_BALANCE" | "RAG_DISABLED" | "RAG_EMBED_NOT_CONFIGURED" | "RAG_SOURCE_NOT_FOUND" | "MESSAGE_NOT_AUDIO" | "AI_STT_NOT_CONFIGURED" | "AI_INTELLIGENCE_NOT_CONFIGURED" | "COPILOT_DISABLED" | "AI_CHAT_NOT_CONFIGURED" | "AI_REWRITE_TOO_LONG" | "AI_PLATFORM_CAP" | "AI_INSIGHT_TOO_SOON" | "PLATFORM_CONFIG_MISSING" | "APP_VERSION_UNSUPPORTED" | "MAINTENANCE" | "USER_SESSION_REQUIRED" | "INVALID_PAYLOAD" | "PAYLOAD_TOO_LARGE" | "SCREENSHOT_UNSUPPORTED" | "SCREENSHOT_TOO_LARGE" | "CHANNELS_DISABLED" | "INVALID_STATE" | "INCOMPLETE_SCOPES" | "PAGE_ALREADY_CLAIMED" | "NO_PAGES_GRANTED" | "META_UNAVAILABLE" | "CHANNEL_CAPABILITY_MISSING" | "CHANNEL_OPS_UNSUPPORTED" | "TEXT_TOO_LONG" | "CHANNEL_DISCONNECTED" | "CALLING_DISABLED" | "CALLING_COEXISTENCE_UNSUPPORTED" | "CALLING_NOT_ENABLED_ON_NUMBER" | "CALL_PERMISSION_REQUIRED" | "CALL_PERMISSION_RATE_LIMITED" | "CALL_PERMISSION_ALREADY_GRANTED" | "CALL_PERMISSION_TEMPLATE_REQUIRED" | "CALL_ALREADY_CLAIMED" | "CALL_AGENT_BUSY" | "CALL_NOT_ACTIVE" | "CALL_ACCEPT_FAILED" | "CALL_RECORDING_OWNER_ONLY" | "CALL_RECORDING_NOT_ALLOWED" | "CALLING_CAP_REACHED" | "VALIDATION_FAILED" | "NOT_FOUND" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL" | "CONFIG_ERROR";
+            error: "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "TOKEN_EXPIRED" | "TOKEN_REUSED" | "TENANT_NOT_RESOLVED" | "TENANT_MISMATCH" | "FORBIDDEN" | "CROSS_TENANT_DENIED" | "PLAN_LIMIT_EXCEEDED" | "QUOTA_EXCEEDED" | "FEATURE_NOT_IN_PLAN" | "PAYMENT_REQUIRED" | "TENANT_SUSPENDED" | "PROVIDER_ERROR" | "INVALID_SIGNATURE" | "REPLAY_DETECTED" | "DUPLICATE_EVENT" | "INVALID_OAUTH_STATE" | "WABA_ALREADY_CLAIMED" | "ONBOARDING_FAILED" | "AUTOMATION_INVALID" | "APPOINTMENT_SLOT_UNAVAILABLE" | "LOYALTY_INVALID" | "LOYALTY_PROGRAM_NOT_FOUND" | "LOYALTY_MEMBER_BLOCKED" | "LOYALTY_INSUFFICIENT_BALANCE" | "WALLET_NOT_READY" | "RAG_DISABLED" | "RAG_EMBED_NOT_CONFIGURED" | "RAG_SOURCE_NOT_FOUND" | "MESSAGE_NOT_AUDIO" | "AI_STT_NOT_CONFIGURED" | "AI_INTELLIGENCE_NOT_CONFIGURED" | "COPILOT_DISABLED" | "AI_CHAT_NOT_CONFIGURED" | "AI_REWRITE_TOO_LONG" | "AI_PLATFORM_CAP" | "AI_INSIGHT_TOO_SOON" | "PLATFORM_CONFIG_MISSING" | "APP_VERSION_UNSUPPORTED" | "MAINTENANCE" | "USER_SESSION_REQUIRED" | "INVALID_PAYLOAD" | "PAYLOAD_TOO_LARGE" | "SCREENSHOT_UNSUPPORTED" | "SCREENSHOT_TOO_LARGE" | "CHANNELS_DISABLED" | "INVALID_STATE" | "INCOMPLETE_SCOPES" | "PAGE_ALREADY_CLAIMED" | "NO_PAGES_GRANTED" | "META_UNAVAILABLE" | "CHANNEL_CAPABILITY_MISSING" | "CHANNEL_OPS_UNSUPPORTED" | "TEXT_TOO_LONG" | "CHANNEL_DISCONNECTED" | "COMMENTS_DISABLED" | "COMMENT_ALREADY_REPLIED" | "COMMENT_REPLY_WINDOW_EXPIRED" | "COMMENT_DELETED" | "CALLING_DISABLED" | "CALLING_COEXISTENCE_UNSUPPORTED" | "CALLING_NOT_ENABLED_ON_NUMBER" | "CALL_PERMISSION_REQUIRED" | "CALL_PERMISSION_RATE_LIMITED" | "CALL_PERMISSION_ALREADY_GRANTED" | "CALL_PERMISSION_TEMPLATE_REQUIRED" | "CALL_ALREADY_CLAIMED" | "CALL_AGENT_BUSY" | "CALL_NOT_ACTIVE" | "CALL_ACCEPT_FAILED" | "CALL_RECORDING_OWNER_ONLY" | "CALL_RECORDING_NOT_ALLOWED" | "CALLING_CAP_REACHED" | "VALIDATION_FAILED" | "NOT_FOUND" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL" | "CONFIG_ERROR";
             /** @description Mensaje legible (string o lista de errores de validación). */
             message: string | string[];
             /** @description Correlación (logs). */
@@ -5426,6 +5429,15 @@ export interface components {
              */
             typing: boolean;
         };
+        QuickReplyDto: {
+            /** @description Dato que vuelve en el webhook cuando el cliente lo toca. Por omisión = `title`. Meta: hasta 1000 caracteres. */
+            payload?: string;
+            /**
+             * @description Texto del botón (Meta: hasta 20 caracteres).
+             * @example Agendar
+             */
+            title: string;
+        };
         RagEngineStatusDto: {
             /**
              * @description Motor de conocimiento efectivo de la cuenta.
@@ -5577,10 +5589,16 @@ export interface components {
             flowPurpose: "LEAD_CAPTURE" | "APPOINTMENT_REQUEST" | "CONTACT_CAPTURE";
         };
         SendInConversationDto: {
+            /** @description Para kind=interactive (C2 · «Botones o lista», solo WhatsApp y con la ventana de 24 h abierta): `{ type:"button", body, buttons:[{title}] }` (1–3, títulos ≤ 20 y distintos, cuerpo ≤ 1024) o `{ type:"list", body, button, rows:[{title, description?}] }` / `sections:[{title?, rows}]` (1–10 secciones, 1–10 filas EN TOTAL, título ≤ 24, descripción ≤ 72, header solo de texto). Los IDs de las opciones los asigna el API. Errores: 422 INTERACTIVE_INVALID `{ field, rule }` · 409 WINDOW_CLOSED · 422 CHANNEL_NOT_SUPPORTED. */
+            interactive?: {
+                [key: string]: unknown;
+            };
             /** @enum {string} */
-            kind: "text" | "template" | "image" | "document" | "audio" | "video" | "reaction";
+            kind: "text" | "template" | "image" | "document" | "audio" | "video" | "reaction" | "interactive";
             /** @description Para kind=image|document|audio|video: el medio a enviar (`id` de Meta o `link` público). */
             media?: components["schemas"]["OutboundMediaDto"];
+            /** @description Solo kind=text en Instagram/Messenger con la bandera `channels.meta.interactions`: botones que el cliente toca para contestar (Meta `quick_replies`). Hasta 13, de 20 caracteres. 422 QUICK_REPLIES_INVALID (límites) · QUICK_REPLIES_UNSUPPORTED (WhatsApp, otro kind o bandera apagada). */
+            quickReplies?: components["schemas"]["QuickReplyDto"][];
             /** @description Para kind=reaction: a qué mensaje y con qué emoji. Se persiste como Message type=reaction colgado del mensaje reaccionado; en el hilo se ve como el emoji bajo la burbuja. */
             reaction?: components["schemas"]["ReactionDto"];
             /** @description Cita: `externalMessageId` del mensaje al que se responde (el id que devuelve GET /messages). WhatsApp pinta la cita arriba de la burbuja. No aplica a plantillas: Cloud API las rechaza con contexto. */
@@ -10177,7 +10195,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "open" | "closed" | "all";
-                /** @description `me` | `unassigned` | `<userId>` (`me` = principal autenticado) */
+                /** @description `me` | `unassigned` | `<userId>` (`me` = principal autenticado). Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`. */
                 assignedTo?: string;
                 /** @description Canal del hilo: `whatsapp` | `instagram` | `messenger`. Se convierte con `toChannelEnum()` (fail-closed) al enum de la base. */
                 channel?: "whatsapp" | "instagram" | "messenger";
@@ -10196,6 +10214,10 @@ export interface operations {
                 waitingOverMin?: number;
                 /** @description `pending` = solo las que tienen un traspaso bot→humano pendiente (el bot pidió una persona y nadie ha contestado). Usa el índice parcial de pendientes; se combina con los demás filtros. */
                 handoff?: "pending";
+                /** @description R10-13: sólo las de esta prioridad del equipo (`high` = alta). Se resuelve en el SERVIDOR con el mismo cursor. */
+                priority?: "high" | "normal";
+                /** @description R10-13: orden del listado. `recent` (omisión) = `lastMessageAt DESC`. `priority` = alta primero y, dentro de cada tramo, `lastMessageAt DESC`. El cursor recuerda el orden: usarlo con otro `sort` ⇒ 400 `INVALID_CURSOR`. En los dos órdenes las FIJADAS de quien pregunta salen antes, solo en la primera página (`pinned: true`), y no se repiten en las siguientes; no cuentan contra `limit`. */
+                sort?: "recent" | "priority";
                 limit?: number;
                 /** @description Cursor keyset opaco (de `nextCursor`). */
                 cursor?: string;
@@ -10307,7 +10329,7 @@ export interface operations {
     ConversationsController_counts: {
         parameters: {
             query?: {
-                /** @description `me` | `unassigned` | `<userId>` (`me` = principal autenticado). Es el alcance «Mías» del segmentado. */
+                /** @description `me` | `unassigned` | `<userId>` (`me` = principal autenticado). Es el alcance «Mías» del segmentado. Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`. */
                 assignedTo?: string;
                 /** @description `<teamId>` para la bandeja de un equipo (alcance «Mi equipo»); `none` para las que no están en ninguno. */
                 teamId?: string;
@@ -14282,7 +14304,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description { mediaId, filename, mimeType, size, phoneNumberId, expiresAt } */
+            /** @description { mediaId, filename, mimeType, size, phoneNumberId, expiresAt, channel? } (IG/FB: phoneNumberId null, channel) */
             200: {
                 headers: {
                     /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
@@ -15727,7 +15749,7 @@ export interface operations {
     TasksController_listMine: {
         parameters: {
             query?: {
-                /** @description Filtra por responsable: `me` (la sesión) | `unassigned` | `<userId>`. */
+                /** @description Filtra por responsable: `me` (la sesión) | `unassigned` | `<userId>`. Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`. */
                 assignedTo?: string;
                 /** @description Solo tareas con `dueAt` < esta fecha (ISO-8601) — vencen antes de. */
                 dueBefore?: string;

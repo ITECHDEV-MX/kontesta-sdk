@@ -148,6 +148,7 @@
               "LOYALTY_PROGRAM_NOT_FOUND",
               "LOYALTY_MEMBER_BLOCKED",
               "LOYALTY_INSUFFICIENT_BALANCE",
+              "WALLET_NOT_READY",
               "RAG_DISABLED",
               "RAG_EMBED_NOT_CONFIGURED",
               "RAG_SOURCE_NOT_FOUND",
@@ -177,6 +178,10 @@
               "CHANNEL_OPS_UNSUPPORTED",
               "TEXT_TOO_LONG",
               "CHANNEL_DISCONNECTED",
+              "COMMENTS_DISABLED",
+              "COMMENT_ALREADY_REPLIED",
+              "COMMENT_REPLY_WINDOW_EXPIRED",
+              "COMMENT_DELETED",
               "CALLING_DISABLED",
               "CALLING_COEXISTENCE_UNSUPPORTED",
               "CALLING_NOT_ENABLED_ON_NUMBER",
@@ -2792,6 +2797,25 @@
         },
         "type": "object"
       },
+      "QuickReplyDto": {
+        "properties": {
+          "payload": {
+            "description": "Dato que vuelve en el webhook cuando el cliente lo toca. Por omisión = `title`. Meta: hasta 1000 caracteres.",
+            "maxLength": 4000,
+            "type": "string"
+          },
+          "title": {
+            "description": "Texto del botón (Meta: hasta 20 caracteres).",
+            "example": "Agendar",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "type": "object"
+      },
       "RagEngineStatusDto": {
         "properties": {
           "engine": {
@@ -3251,6 +3275,11 @@
       },
       "SendInConversationDto": {
         "properties": {
+          "interactive": {
+            "additionalProperties": true,
+            "description": "Para kind=interactive (C2 · «Botones o lista», solo WhatsApp y con la ventana de 24 h abierta): `{ type:\"button\", body, buttons:[{title}] }` (1–3, títulos ≤ 20 y distintos, cuerpo ≤ 1024) o `{ type:\"list\", body, button, rows:[{title, description?}] }` / `sections:[{title?, rows}]` (1–10 secciones, 1–10 filas EN TOTAL, título ≤ 24, descripción ≤ 72, header solo de texto). Los IDs de las opciones los asigna el API. Errores: 422 INTERACTIVE_INVALID `{ field, rule }` · 409 WINDOW_CLOSED · 422 CHANNEL_NOT_SUPPORTED.",
+            "type": "object"
+          },
           "kind": {
             "enum": [
               "text",
@@ -3259,7 +3288,8 @@
               "document",
               "audio",
               "video",
-              "reaction"
+              "reaction",
+              "interactive"
             ],
             "type": "string"
           },
@@ -3270,6 +3300,13 @@
               }
             ],
             "description": "Para kind=image|document|audio|video: el medio a enviar (`id` de Meta o `link` público)."
+          },
+          "quickReplies": {
+            "description": "Solo kind=text en Instagram/Messenger con la bandera `channels.meta.interactions`: botones que el cliente toca para contestar (Meta `quick_replies`). Hasta 13, de 20 caracteres. 422 QUICK_REPLIES_INVALID (límites) · QUICK_REPLIES_UNSUPPORTED (WhatsApp, otro kind o bandera apagada).",
+            "items": {
+              "$ref": "#/components/schemas/QuickReplyDto"
+            },
+            "type": "array"
           },
           "reaction": {
             "allOf": [
@@ -13920,7 +13957,7 @@
             }
           },
           {
-            "description": "`me` | `unassigned` | `<userId>` (`me` = principal autenticado)",
+            "description": "`me` | `unassigned` | `<userId>` (`me` = principal autenticado). Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`.",
             "in": "query",
             "name": "assignedTo",
             "required": false,
@@ -14037,6 +14074,33 @@
             "schema": {
               "enum": [
                 "pending"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "R10-13: sólo las de esta prioridad del equipo (`high` = alta). Se resuelve en el SERVIDOR con el mismo cursor.",
+            "in": "query",
+            "name": "priority",
+            "required": false,
+            "schema": {
+              "enum": [
+                "high",
+                "normal"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "R10-13: orden del listado. `recent` (omisión) = `lastMessageAt DESC`. `priority` = alta primero y, dentro de cada tramo, `lastMessageAt DESC`. El cursor recuerda el orden: usarlo con otro `sort` ⇒ 400 `INVALID_CURSOR`. En los dos órdenes las FIJADAS de quien pregunta salen antes, solo en la primera página (`pinned: true`), y no se repiten en las siguientes; no cuentan contra `limit`.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "recent",
+              "enum": [
+                "recent",
+                "priority"
               ],
               "type": "string"
             }
@@ -14265,7 +14329,7 @@
         "operationId": "ConversationsController_counts",
         "parameters": [
           {
-            "description": "`me` | `unassigned` | `<userId>` (`me` = principal autenticado). Es el alcance «Mías» del segmentado.",
+            "description": "`me` | `unassigned` | `<userId>` (`me` = principal autenticado). Es el alcance «Mías» del segmentado. Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`.",
             "in": "query",
             "name": "assignedTo",
             "required": false,
@@ -23073,12 +23137,12 @@
     },
     "/v1/media/upload": {
       "post": {
-        "description": "Sube la imagen o el documento a Meta y devuelve su `mediaId`, que se manda luego en POST /v1/conversations/:id/messages con kind=image|document|audio|video. El archivo NO se guarda de nuestro lado: duplicar PII del cliente sin necesidad. Límites: imagen 5 MB, documento/video/audio 16 MB. El contenido se verifica por firma (magic bytes) contra el MIME declarado: un \".mp4\" que no es video es 400 MEDIA_CONTENT_MISMATCH. Nota de voz: máximo 2 min 30 s (el excedente se recorta). SIN conversación: manda `phoneNumberId` (id interno del número de envío) en lugar de `conversationId`; solo kind=image|video|document con los límites del encabezado de plantilla (JPEG/PNG 5 MB, MP4/3GPP 16 MB, PDF 16 MB). Exactamente uno de los dos. El `mediaId` solo sirve para enviar desde ese número y caduca en 30 días (`expiresAt`). Cuota: 20 por minuto por persona o llave (429 MEDIA_UPLOAD_RATE_LIMITED con `retryAfter`).",
+        "description": "Sube la imagen o el documento a Meta y devuelve su `mediaId`, que se manda luego en POST /v1/conversations/:id/messages con kind=image|document|audio|video. El archivo NO se guarda de nuestro lado: duplicar PII del cliente sin necesidad. Límites: imagen 5 MB, documento/video/audio 16 MB. El contenido se verifica por firma (magic bytes) contra el MIME declarado: un \".mp4\" que no es video es 400 MEDIA_CONTENT_MISMATCH. Nota de voz: máximo 2 min 30 s (el excedente se recorta). SIN conversación: manda `phoneNumberId` (id interno del número de envío) en lugar de `conversationId`; solo kind=image|video|document con los límites del encabezado de plantilla (JPEG/PNG 5 MB, MP4/3GPP 16 MB, PDF 16 MB). Exactamente uno de los dos. El `mediaId` solo sirve para enviar desde ese número y caduca en 30 días (`expiresAt`). Cuota: 20 por minuto por persona o llave (429 MEDIA_UPLOAD_RATE_LIMITED con `retryAfter`). INSTAGRAM/MESSENGER (P1-7, detrás de la bandera de plataforma `messenger.mediaOut.enabled`; apagada ⇒ 422 CHANNEL_MEDIA_DISABLED): el archivo se guarda en Kontesta (Meta lo descarga por una liga firmada de 15 min al enviar) y `mediaId` es una referencia firmada `kmo1.…` atada a ESA conversación y a ese `kind`, vigente 24 h (`expiresAt`), con `phoneNumberId: null` y `channel`. Límites: imagen JPG/PNG 8 MB; video MP4 16 MB; audio (cualquier grabación) 16 MB, se convierte a M4A; documento: Instagram solo PDF, Messenger PDF/Office/txt/csv, 16 MB. Instagram y Messenger no admiten pie de foto: el texto va en un mensaje aparte.",
         "operationId": "MediaController_upload",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "{ mediaId, filename, mimeType, size, phoneNumberId, expiresAt }",
+            "description": "{ mediaId, filename, mimeType, size, phoneNumberId, expiresAt, channel? } (IG/FB: phoneNumberId null, channel)",
             "headers": {
               "X-RateLimit-Limit": {
                 "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
@@ -25094,7 +25158,7 @@
     },
     "/v1/reports/appointments": {
       "get": {
-        "description": "Rango [from, to) en tz (to EXCLUSIVO, cap 92 días). Ocupación = horas reservadas (todo estado menos CANCELLED; NO_SHOW ocupa) / horas disponibles configuradas (null si no hay disponibilidad). noShowRate = NO_SHOW/(COMPLETED+NO_SHOW). Ingresos SIN doble conteo: cobrado (PaymentLink PAID), cubiertoPorBono APARTE, pendiente (TOTAL sin pagar). Filtros resourceId/appointmentTypeId acotan todo.",
+        "description": "Rango [from, to) en tz (to EXCLUSIVO, cap 92 días). Ocupación = horas reservadas (todo estado menos CANCELLED; NO_SHOW ocupa) / horas disponibles configuradas (null si no hay disponibilidad). noShowRate = NO_SHOW/(COMPLETED+NO_SHOW). Ingresos SIN doble conteo: cobrado (PaymentLink PAID), cubiertoPorBono APARTE, pendiente (TOTAL sin pagar). Filtros resourceId/appointmentTypeId acotan todo. Solo OWNER/ADMIN (lleva ingreso por profesional): una sesión AGENT/VIEWER recibe 403.",
         "operationId": "ReportsController_appointments",
         "parameters": [
           {
@@ -26278,7 +26342,7 @@
         "operationId": "TasksController_listMine",
         "parameters": [
           {
-            "description": "Filtra por responsable: `me` (la sesión) | `unassigned` | `<userId>`.",
+            "description": "Filtra por responsable: `me` (la sesión) | `unassigned` | `<userId>`. Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`.",
             "in": "query",
             "name": "assignedTo",
             "required": false,
@@ -26513,6 +26577,7 @@
     },
     "/v1/teams": {
       "get": {
+        "description": "OWNER/ADMIN (y API keys con `teams:read`): cada miembro con `{ id, name, email }`. AGENT/VIEWER: el mismo arreglo con `email: \"\"` — sin correo.",
         "operationId": "TeamsController_list",
         "parameters": [],
         "responses": {
