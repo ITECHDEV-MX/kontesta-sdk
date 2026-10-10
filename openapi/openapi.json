@@ -148,6 +148,7 @@
               "LOYALTY_PROGRAM_NOT_FOUND",
               "LOYALTY_MEMBER_BLOCKED",
               "LOYALTY_INSUFFICIENT_BALANCE",
+              "WALLET_NOT_READY",
               "RAG_DISABLED",
               "RAG_EMBED_NOT_CONFIGURED",
               "RAG_SOURCE_NOT_FOUND",
@@ -177,6 +178,10 @@
               "CHANNEL_OPS_UNSUPPORTED",
               "TEXT_TOO_LONG",
               "CHANNEL_DISCONNECTED",
+              "COMMENTS_DISABLED",
+              "COMMENT_ALREADY_REPLIED",
+              "COMMENT_REPLY_WINDOW_EXPIRED",
+              "COMMENT_DELETED",
               "CALLING_DISABLED",
               "CALLING_COEXISTENCE_UNSUPPORTED",
               "CALLING_NOT_ENABLED_ON_NUMBER",
@@ -1022,6 +1027,51 @@
         },
         "type": "object"
       },
+      "CloseReasonResponseDto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "isActive": {
+            "description": "false = archivado: ya no sale en el selector, pero las conversaciones cerradas con él lo conservan.",
+            "type": "boolean"
+          },
+          "isDefault": {
+            "description": "true = viene de fábrica (se puede renombrar o archivar igual).",
+            "type": "boolean"
+          },
+          "label": {
+            "example": "Venta cerrada",
+            "type": "string"
+          },
+          "position": {
+            "description": "Orden en el selector (menor primero).",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "position",
+          "isActive",
+          "isDefault"
+        ],
+        "type": "object"
+      },
+      "CloseReasonsListResponseDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CloseReasonResponseDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
       "ConnectReputationDto": {
         "properties": {
           "code": {
@@ -1450,6 +1500,19 @@
           "weekday",
           "startMinute",
           "endMinute"
+        ],
+        "type": "object"
+      },
+      "CreateCloseReasonDto": {
+        "properties": {
+          "label": {
+            "maxLength": 60,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "label"
         ],
         "type": "object"
       },
@@ -2792,6 +2855,25 @@
         },
         "type": "object"
       },
+      "QuickReplyDto": {
+        "properties": {
+          "payload": {
+            "description": "Dato que vuelve en el webhook cuando el cliente lo toca. Por omisión = `title`. Meta: hasta 1000 caracteres.",
+            "maxLength": 4000,
+            "type": "string"
+          },
+          "title": {
+            "description": "Texto del botón (Meta: hasta 20 caracteres).",
+            "example": "Agendar",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "type": "object"
+      },
       "RagEngineStatusDto": {
         "properties": {
           "engine": {
@@ -3251,6 +3333,11 @@
       },
       "SendInConversationDto": {
         "properties": {
+          "interactive": {
+            "additionalProperties": true,
+            "description": "Para kind=interactive (C2 · «Botones o lista», solo WhatsApp y con la ventana de 24 h abierta): `{ type:\"button\", body, buttons:[{title}] }` (1–3, títulos ≤ 20 y distintos, cuerpo ≤ 1024) o `{ type:\"list\", body, button, rows:[{title, description?}] }` / `sections:[{title?, rows}]` (1–10 secciones, 1–10 filas EN TOTAL, título ≤ 24, descripción ≤ 72, header solo de texto). Los IDs de las opciones los asigna el API. Errores: 422 INTERACTIVE_INVALID `{ field, rule }` · 409 WINDOW_CLOSED · 422 CHANNEL_NOT_SUPPORTED.",
+            "type": "object"
+          },
           "kind": {
             "enum": [
               "text",
@@ -3259,7 +3346,8 @@
               "document",
               "audio",
               "video",
-              "reaction"
+              "reaction",
+              "interactive"
             ],
             "type": "string"
           },
@@ -3270,6 +3358,13 @@
               }
             ],
             "description": "Para kind=image|document|audio|video: el medio a enviar (`id` de Meta o `link` público)."
+          },
+          "quickReplies": {
+            "description": "Solo kind=text en Instagram/Messenger con la bandera `channels.meta.interactions`: botones que el cliente toca para contestar (Meta `quick_replies`). Hasta 13, de 20 caracteres. 422 QUICK_REPLIES_INVALID (límites) · QUICK_REPLIES_UNSUPPORTED (WhatsApp, otro kind o bandera apagada).",
+            "items": {
+              "$ref": "#/components/schemas/QuickReplyDto"
+            },
+            "type": "array"
           },
           "reaction": {
             "allOf": [
@@ -4172,6 +4267,25 @@
         },
         "type": "object"
       },
+      "UpdateCloseReasonDto": {
+        "properties": {
+          "isActive": {
+            "description": "false = archivar (nunca se borra).",
+            "type": "boolean"
+          },
+          "label": {
+            "maxLength": 60,
+            "minLength": 1,
+            "type": "string"
+          },
+          "position": {
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
       "UpdateCommissionRuleDto": {
         "properties": {
           "active": {
@@ -4261,6 +4375,16 @@
             "description": "User.id del tenant con isActive=true; null = desasignar.",
             "maxLength": 64,
             "nullable": true,
+            "type": "string"
+          },
+          "closeNote": {
+            "description": "R10-10: comentario libre del cierre (hasta 280 caracteres). Mismas reglas que `closeReasonId`; vacío lo borra.",
+            "maxLength": 280,
+            "type": "string"
+          },
+          "closeReasonId": {
+            "description": "R10-10: motivo del catálogo (`GET /v1/conversation-close-reasons`). Va en el mismo PATCH que cierra (`status: \"CLOSED\"`) o DESPUÉS, solo (sin `status`), mientras la conversación siga cerrada y dentro de 15 minutos desde `closedAt`: 409 `CONVERSATION_NOT_CLOSED` si está abierta o se reabrió, 409 `CLOSE_REASON_WINDOW_EXPIRED` si ya pasó la ventana. Nunca con `status: \"OPEN\"` (400 `CLOSE_REASON_ONLY_WHEN_CLOSING`). 400 `CLOSE_REASON_NOT_FOUND` si no existe, es de otro negocio o está archivado. Opcional: cerrar sin motivo siempre es válido. Repetir el mismo valor no cambia nada.",
+            "maxLength": 64,
             "type": "string"
           },
           "status": {
@@ -4824,7 +4948,7 @@
     }
   },
   "info": {
-    "description": "API pública /v1 de Kontesta: la superficie que se alcanza con una API key.\n\nEste documento trae solo las 328 operaciones que una llave puede llamar. Guía completa, ejemplos en PHP, C#, TypeScript y Python, y catálogo de eventos: https://kontesta.mx/integracion\n\n## Autenticación\nCabecera `X-Api-Key: ktk_<prefijo>.<secreto>` (también se acepta como `Authorization: Bearer ktk_...`). La llave se crea en la app, en Ajustes → Llaves de API.\n\n## Permisos\nCada operación exige los scopes de `x-required-scopes`. Todo lo que no se concede se niega: sin el scope la respuesta es `403`.\n\n## Límites\nVentana de un minuto por cuenta, con cubetas separadas para lectura y escritura. Cada respuesta trae `X-RateLimit-Limit/Remaining/Reset`; al pasarte, `429` + `Retry-After`.\n\n## Errores\nCuerpo uniforme `{ statusCode, error, message, requestId }`.\n\n## Versionado\n`/v1` solo cambia de forma aditiva; un cambio incompatible abre `/v2`.",
+    "description": "API pública /v1 de Kontesta: la superficie que se alcanza con una API key.\n\nEste documento trae solo las 342 operaciones que una llave puede llamar. Guía completa, ejemplos en PHP, C#, TypeScript y Python, y catálogo de eventos: https://kontesta.mx/integracion\n\n## Autenticación\nCabecera `X-Api-Key: ktk_<prefijo>.<secreto>` (también se acepta como `Authorization: Bearer ktk_...`). La llave se crea en la app, en Ajustes → Llaves de API.\n\n## Permisos\nCada operación exige los scopes de `x-required-scopes`. Todo lo que no se concede se niega: sin el scope la respuesta es `403`.\n\n## Límites\nVentana de un minuto por cuenta, con cubetas separadas para lectura y escritura. Cada respuesta trae `X-RateLimit-Limit/Remaining/Reset`; al pasarte, `429` + `Retry-After`.\n\n## Errores\nCuerpo uniforme `{ statusCode, error, message, requestId }`.\n\n## Versionado\n`/v1` solo cambia de forma aditiva; un cambio incompatible abre `/v2`.",
     "title": "Kontesta API",
     "version": "1.0"
   },
@@ -13015,9 +13139,10 @@
         "operationId": "ContactDirectoryController_listFields",
         "parameters": [
           {
+            "description": "`true` incluye los campos archivados.",
             "in": "query",
             "name": "includeArchived",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             }
@@ -13640,6 +13765,82 @@
         ]
       }
     },
+    "/v1/contacts/{id}/leads": {
+      "get": {
+        "description": "Keyset por `updatedAt` descendente (`nextCursor` opaco). Visibilidad por equipo como el tablero. 404 si el contacto no existe.",
+        "operationId": "ContactLeadsController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "`nextCursor` de la página anterior.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {}
+          },
+          {
+            "description": "1–100 (30 por omisión).",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Todas las oportunidades de un contacto",
+        "tags": [
+          "Leads y embudos"
+        ],
+        "x-required-scopes": [
+          "leads:read"
+        ]
+      }
+    },
     "/v1/contacts/{id}/photos": {
       "get": {
         "operationId": "ContactPhotosController_listPhotos",
@@ -13900,6 +14101,234 @@
         ]
       }
     },
+    "/v1/conversation-close-reasons": {
+      "get": {
+        "description": "Por omisión solo los activos, en orden. `includeInactive=true` (solo OWNER/ADMIN) agrega los archivados. La primera vez se siembran los de fábrica (Resuelto, Venta cerrada, Cita agendada, Sin respuesta del cliente, No le interesó, Duplicada, Spam).",
+        "operationId": "CloseReasonsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "includeInactive",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseReasonsListResponseDto"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Motivos de cierre del negocio",
+        "tags": [
+          "Conversaciones y mensajes"
+        ],
+        "x-required-scopes": [
+          "conversations:read"
+        ]
+      },
+      "post": {
+        "description": "409 `CLOSE_REASON_LABEL_TAKEN` · `CLOSE_REASON_LIMIT_REACHED` (30).",
+        "operationId": "CloseReasonsController_create",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCloseReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseReasonResponseDto"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "CLOSE_REASON_LABEL_REQUIRED"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "CLOSE_REASON_LABEL_TAKEN · CLOSE_REASON_LIMIT_REACHED"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Crear un motivo de cierre (auditado)",
+        "tags": [
+          "Conversaciones y mensajes"
+        ],
+        "x-required-scopes": [
+          "conversations:write"
+        ]
+      }
+    },
+    "/v1/conversation-close-reasons/{id}": {
+      "patch": {
+        "description": "Nunca se borra: `isActive=false` lo archiva.",
+        "operationId": "CloseReasonsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCloseReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseReasonResponseDto"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "description": "CLOSE_REASON_LABEL_TAKEN"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Renombrar, reordenar o archivar un motivo (auditado)",
+        "tags": [
+          "Conversaciones y mensajes"
+        ],
+        "x-required-scopes": [
+          "conversations:write"
+        ]
+      }
+    },
     "/v1/conversations": {
       "get": {
         "description": "Orden lastMessageAt DESC con paginación keyset (cursor opaco). Filtros: status (default open), assignedTo (me | unassigned | userId), channel, origin.",
@@ -13920,7 +14349,7 @@
             }
           },
           {
-            "description": "`me` | `unassigned` | `<userId>` (`me` = principal autenticado)",
+            "description": "`me` | `unassigned` | `<userId>` (`me` = principal autenticado). Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`.",
             "in": "query",
             "name": "assignedTo",
             "required": false,
@@ -14037,6 +14466,33 @@
             "schema": {
               "enum": [
                 "pending"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "R10-13: sólo las de esta prioridad del equipo (`high` = alta). Se resuelve en el SERVIDOR con el mismo cursor.",
+            "in": "query",
+            "name": "priority",
+            "required": false,
+            "schema": {
+              "enum": [
+                "high",
+                "normal"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "R10-13: orden del listado. `recent` (omisión) = `lastMessageAt DESC`. `priority` = alta primero y, dentro de cada tramo, `lastMessageAt DESC`. El cursor recuerda el orden: usarlo con otro `sort` ⇒ 400 `INVALID_CURSOR`. En los dos órdenes las FIJADAS de quien pregunta salen antes, solo en la primera página (`pinned: true`), y no se repiten en las siguientes; no cuentan contra `limit`.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "recent",
+              "enum": [
+                "recent",
+                "priority"
               ],
               "type": "string"
             }
@@ -14265,7 +14721,7 @@
         "operationId": "ConversationsController_counts",
         "parameters": [
           {
-            "description": "`me` | `unassigned` | `<userId>` (`me` = principal autenticado). Es el alcance «Mías» del segmentado.",
+            "description": "`me` | `unassigned` | `<userId>` (`me` = principal autenticado). Es el alcance «Mías» del segmentado. Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`.",
             "in": "query",
             "name": "assignedTo",
             "required": false,
@@ -14628,7 +15084,7 @@
         ]
       },
       "patch": {
-        "description": "assignedToId debe ser User activo del tenant (400 si no); null desasigna. Cada cambio queda auditado (AuditLog: conversation.assigned|unassigned|closed|reopened).",
+        "description": "assignedToId debe ser User activo del tenant (400 si no); null desasigna. Cada cambio queda auditado (AuditLog: conversation.assigned|unassigned|closed|reopened|close_reason_set). El motivo de cierre va al cerrar o hasta 15 minutos después mientras siga cerrada (ver `closeReasonId`).",
         "operationId": "ConversationsController_update",
         "parameters": [
           {
@@ -14686,6 +15142,9 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "`CONVERSATION_NOT_CLOSED` · `CLOSE_REASON_WINDOW_EXPIRED` — motivo de cierre agregado después de cerrar."
           },
           "429": {
             "$ref": "#/components/responses/TooManyRequests"
@@ -16525,7 +16984,7 @@
     },
     "/v1/conversations/{id}/leads": {
       "get": {
-        "description": "Hoy `leads` trae 0 o 1 elemento (una oportunidad por conversación). Cada lead trae `pipelineId` y `stageChangedAt`; `pipelines` viene con el default primero y las etapas en orden.",
+        "description": "`leads` trae las oportunidades del hilo y del contacto (T33: varias por contacto), la PRINCIPAL en `[0]` (la decide el servidor: abiertas primero, las de este hilo, embudo predeterminado…) más `principalLeadId`, `contactId`, `counts` y `hasMore`. Cada lead trae `pipelineId` y `stageChangedAt`; `pipelines` viene con el default primero y las etapas en orden.",
         "operationId": "ConversationLeadsController_list",
         "parameters": [
           {
@@ -21510,6 +21969,218 @@
         ]
       }
     },
+    "/v1/lead-close-reasons": {
+      "get": {
+        "description": "Catálogo por negocio, ordenado por `position`. `kind`: LEAD_LOST | LEAD_WON. Los archivados solo con `includeArchived=1`.",
+        "operationId": "LeadCloseReasonsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "LEAD_LOST",
+                "LEAD_WON"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "`1` incluye los archivados.",
+            "in": "query",
+            "name": "includeArchived",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Motivos de cierre del negocio",
+        "tags": [
+          "Leads y embudos"
+        ],
+        "x-required-scopes": [
+          "leads:read"
+        ]
+      },
+      "post": {
+        "description": "409 CLOSE_REASON_LABEL_TAKEN (mismo rótulo activo en el tipo) · 409 CLOSE_REASON_LIMIT (30 por tipo).",
+        "operationId": "LeadCloseReasonsController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Crear un motivo de cierre",
+        "tags": [
+          "Leads y embudos"
+        ],
+        "x-required-scopes": [
+          "pipelines:write"
+        ]
+      }
+    },
+    "/v1/lead-close-reasons/{id}": {
+      "patch": {
+        "description": "Nunca se borra: `archived: true` lo deja de ofrecer, las oportunidades que ya lo usan lo conservan.",
+        "operationId": "LeadCloseReasonsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Renombrar, reordenar o archivar un motivo",
+        "tags": [
+          "Leads y embudos"
+        ],
+        "x-required-scopes": [
+          "pipelines:write"
+        ]
+      }
+    },
     "/v1/leads": {
       "get": {
         "description": "Misma visibilidad por equipo que `GET /leads/board`: es su paginación.",
@@ -21522,6 +22193,40 @@
             "required": false,
             "schema": {
               "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "description": "T33: solo las oportunidades de este embudo.",
+            "in": "query",
+            "name": "pipelineId",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "description": "T33: solo las oportunidades de este contacto.",
+            "in": "query",
+            "name": "contactId",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "description": "T33: estado — `open` (abierta), `won` (ganada) o `lost` (perdida).",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "open",
+                "won",
+                "lost"
+              ],
               "type": "string"
             }
           },
@@ -21628,9 +22333,20 @@
         ]
       },
       "post": {
-        "description": "Con `conversationId`: 409 LEAD_EXISTS_FOR_CONVERSATION si el hilo ya tiene oportunidad; deja la línea «{persona} creó la oportunidad en {etapa}» en el hilo (P1-6a).",
+        "description": "T33: la oportunidad se ancla al CONTACTO (se deduce del hilo con `conversationId`, o `contactId`). Como máximo UNA abierta por contacto y embudo: 409 LEAD_EXISTS_FOR_CONVERSATION (`details.leadId`) si ya hay otra, salvo `allowAdditional: true`. `pipelineId` sin `stageId` usa la 1.ª etapa de ese embudo (409 PIPELINE_ARCHIVED, 400 STAGE_INVALID / CONTACT_INVALID). Deja la línea «{persona} creó la oportunidad en {etapa}» en el hilo (P1-6a). Acepta Idempotency-Key.",
         "operationId": "LeadsController_create",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "Llave única por intento de envío (1-255 caracteres ASCII visibles, p. ej. un UUID). Reenviar la MISMA petición con la misma llave dentro de 24 h devuelve la respuesta original (mismo messageId) sin encolar otro envío, con la cabecera `Idempotent-Replayed: true`. La llave es por usuario/API key y tenant.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "content": {
@@ -21668,8 +22384,14 @@
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
+          "409": {
+            "description": "`IDEMPOTENCY_KEY_REUSED`: la llave ya se usó con otro cuerpo · `IDEMPOTENCY_IN_PROGRESS`: la petición original sigue en curso (reintentar) · `IDEMPOTENCY_ORIGINAL_FAILED`: la original falló sin confirmar si el mensaje salió; no se reintenta con esa llave (revisar la conversación y, si hace falta, usar una nueva)."
+          },
           "429": {
             "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "description": "`IDEMPOTENCY_UNAVAILABLE`: con Idempotency-Key, si no se puede garantizar que el envío no se duplique, no se manda nada y se responde 503 con `Retry-After`. Reintentar con la MISMA llave."
           }
         },
         "security": [
@@ -21794,7 +22516,7 @@
     },
     "/v1/leads/{id}": {
       "patch": {
-        "description": "Posición server-side desde before/afterLeadId (midpoint + rebalanceo inline). Precondición opcional `expectedStageId`/`expectedValueMinor` ⇒ 409 LEAD_CHANGED con `{ lead, lastChange }` si no coincide. La misma etapa sin vecinos no hace nada. Cambiar etapa o valor deja auditoría, línea en el hilo y sync CRM.",
+        "description": "Posición server-side desde before/afterLeadId (midpoint + rebalanceo inline). Precondición opcional `expectedStageId`/`expectedValueMinor` ⇒ 409 LEAD_CHANGED con `{ lead, lastChange }` si no coincide. La misma etapa sin vecinos no hace nada. Cambiar etapa o valor deja auditoría, línea en el hilo y sync CRM. T33: `closeReasonId` (catálogo `GET /v1/lead-close-reasons`) y `closeNote` (≤ 280) al cerrar; 422 CLOSE_REASON_REQUIRED si el embudo exige motivo de pérdida y falta; 400 CLOSE_REASON_INVALID (archivado, de otro tipo o lead abierto); 409 PIPELINE_ARCHIVED.",
         "operationId": "LeadsController_move",
         "parameters": [
           {
@@ -23073,12 +23795,12 @@
     },
     "/v1/media/upload": {
       "post": {
-        "description": "Sube la imagen o el documento a Meta y devuelve su `mediaId`, que se manda luego en POST /v1/conversations/:id/messages con kind=image|document|audio|video. El archivo NO se guarda de nuestro lado: duplicar PII del cliente sin necesidad. Límites: imagen 5 MB, documento/video/audio 16 MB. El contenido se verifica por firma (magic bytes) contra el MIME declarado: un \".mp4\" que no es video es 400 MEDIA_CONTENT_MISMATCH. Nota de voz: máximo 2 min 30 s (el excedente se recorta). SIN conversación: manda `phoneNumberId` (id interno del número de envío) en lugar de `conversationId`; solo kind=image|video|document con los límites del encabezado de plantilla (JPEG/PNG 5 MB, MP4/3GPP 16 MB, PDF 16 MB). Exactamente uno de los dos. El `mediaId` solo sirve para enviar desde ese número y caduca en 30 días (`expiresAt`). Cuota: 20 por minuto por persona o llave (429 MEDIA_UPLOAD_RATE_LIMITED con `retryAfter`).",
+        "description": "Sube la imagen o el documento a Meta y devuelve su `mediaId`, que se manda luego en POST /v1/conversations/:id/messages con kind=image|document|audio|video. El archivo NO se guarda de nuestro lado: duplicar PII del cliente sin necesidad. Límites: imagen 5 MB, documento/video/audio 16 MB. El contenido se verifica por firma (magic bytes) contra el MIME declarado: un \".mp4\" que no es video es 400 MEDIA_CONTENT_MISMATCH. Nota de voz: máximo 2 min 30 s (el excedente se recorta). SIN conversación: manda `phoneNumberId` (id interno del número de envío) en lugar de `conversationId`; solo kind=image|video|document con los límites del encabezado de plantilla (JPEG/PNG 5 MB, MP4/3GPP 16 MB, PDF 16 MB). Exactamente uno de los dos. El `mediaId` solo sirve para enviar desde ese número y caduca en 30 días (`expiresAt`). Cuota: 20 por minuto por persona o llave (429 MEDIA_UPLOAD_RATE_LIMITED con `retryAfter`). INSTAGRAM/MESSENGER (P1-7, detrás de la bandera de plataforma `messenger.mediaOut.enabled`; apagada ⇒ 422 CHANNEL_MEDIA_DISABLED): el archivo se guarda en Kontesta (Meta lo descarga por una liga firmada de 15 min al enviar) y `mediaId` es una referencia firmada `kmo1.…` atada a ESA conversación y a ese `kind`, vigente 24 h (`expiresAt`), con `phoneNumberId: null` y `channel`. Límites: imagen JPG/PNG 8 MB; video MP4 16 MB; audio (cualquier grabación) 16 MB, se convierte a M4A; documento: Instagram solo PDF, Messenger PDF/Office/txt/csv, 16 MB. Instagram y Messenger no admiten pie de foto: el texto va en un mensaje aparte.",
         "operationId": "MediaController_upload",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "{ mediaId, filename, mimeType, size, phoneNumberId, expiresAt }",
+            "description": "{ mediaId, filename, mimeType, size, phoneNumberId, expiresAt, channel? } (IG/FB: phoneNumberId null, channel)",
             "headers": {
               "X-RateLimit-Limit": {
                 "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
@@ -24471,7 +25193,17 @@
     "/v1/pipelines": {
       "get": {
         "operationId": "PipelinesController_list",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "`1` o `true` incluye los embudos archivados.",
+            "in": "query",
+            "name": "includeArchived",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -24527,6 +25259,193 @@
         ],
         "x-required-scopes": [
           "pipelines:read"
+        ]
+      },
+      "post": {
+        "operationId": "PipelinesController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Crear embudo (R10-1)",
+        "tags": [
+          "Leads y embudos"
+        ],
+        "x-required-scopes": [
+          "pipelines:write"
+        ]
+      }
+    },
+    "/v1/pipelines/{id}": {
+      "patch": {
+        "operationId": "PipelinesController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Renombrar / reordenar / marcar como predeterminado un embudo",
+        "tags": [
+          "Leads y embudos"
+        ],
+        "x-required-scopes": [
+          "pipelines:write"
+        ]
+      }
+    },
+    "/v1/pipelines/{id}/archive": {
+      "post": {
+        "description": "Nunca se borra. El predeterminado no se archiva (409 `PIPELINE_IS_DEFAULT`). Con oportunidades abiertas exige `moveOpenTo` (etapa de otro embudo activo); sin él, 409 `PIPELINE_HAS_OPEN_LEADS`.",
+        "operationId": "PipelinesController_archive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Archivar embudo",
+        "tags": [
+          "Leads y embudos"
+        ],
+        "x-required-scopes": [
+          "pipelines:write"
         ]
       }
     },
@@ -24590,6 +25509,74 @@
           }
         ],
         "summary": "Agregar columna a un pipeline",
+        "tags": [
+          "Leads y embudos"
+        ],
+        "x-required-scopes": [
+          "pipelines:write"
+        ]
+      }
+    },
+    "/v1/pipelines/{id}/unarchive": {
+      "post": {
+        "operationId": "PipelinesController_unarchive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Reactivar un embudo archivado",
         "tags": [
           "Leads y embudos"
         ],
@@ -25094,7 +26081,7 @@
     },
     "/v1/reports/appointments": {
       "get": {
-        "description": "Rango [from, to) en tz (to EXCLUSIVO, cap 92 días). Ocupación = horas reservadas (todo estado menos CANCELLED; NO_SHOW ocupa) / horas disponibles configuradas (null si no hay disponibilidad). noShowRate = NO_SHOW/(COMPLETED+NO_SHOW). Ingresos SIN doble conteo: cobrado (PaymentLink PAID), cubiertoPorBono APARTE, pendiente (TOTAL sin pagar). Filtros resourceId/appointmentTypeId acotan todo.",
+        "description": "Rango [from, to) en tz (to EXCLUSIVO, cap 92 días). Ocupación = horas reservadas (todo estado menos CANCELLED; NO_SHOW ocupa) / horas disponibles configuradas (null si no hay disponibilidad). noShowRate = NO_SHOW/(COMPLETED+NO_SHOW). Ingresos SIN doble conteo: cobrado (PaymentLink PAID), cubiertoPorBono APARTE, pendiente (TOTAL sin pagar). Filtros resourceId/appointmentTypeId acotan todo. Solo OWNER/ADMIN (lleva ingreso por profesional): una sesión AGENT/VIEWER recibe 403.",
         "operationId": "ReportsController_appointments",
         "parameters": [
           {
@@ -25327,6 +26314,301 @@
         ],
         "x-required-scopes": [
           "commissions:read"
+        ]
+      }
+    },
+    "/v1/reports/pipeline-conversion": {
+      "get": {
+        "description": "Cohorte = leads del embudo creados en el rango. «Alcanzó la etapa S» = hubo un evento hacia S o hacia una etapa de mayor posición que no sea LOST (saltarse columnas cuenta como pasar). `outcome` trae ganadas, perdidas, abiertas, valor ganado por moneda, mediana de días a ganar y perdidas por motivo. `approximateBefore`/`approximateLeads` marcan la historia reconstruida de antes de la migración (aproximada). Recorte por rol EN EL SERVIDOR (sin parámetro): OWNER/ADMIN y llave de API reciben todo; un AGENT o VIEWER recibe SOLO sus oportunidades (asignadas o cerradas por él) dentro de su visibilidad por equipo, sin filas de compañeros ni mediana de equipo. `scope` dice cuál llegó. Rango [from, to) con `to` EXCLUSIVO, tope de 92 días, en la zona horaria del negocio.",
+        "operationId": "PipelineReportsController_conversion",
+        "parameters": [
+          {
+            "description": "Inicio (inclusive), YYYY-MM-DD en la zona del negocio.",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "example": "2026-10-01",
+              "pattern": "/^\\d{4}-\\d{2}-\\d{2}$/",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Fin (EXCLUSIVO), YYYY-MM-DD en la zona del negocio.",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "example": "2026-11-01",
+              "pattern": "/^\\d{4}-\\d{2}-\\d{2}$/",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Embudo (id del pipeline). Un id ajeno o inexistente da 404.",
+            "in": "query",
+            "name": "pipelineId",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Conversión por etapa de un embudo",
+        "tags": [
+          "Leads y embudos"
+        ],
+        "x-required-scopes": [
+          "metrics:read"
+        ]
+      }
+    },
+    "/v1/reports/pipeline-stage-time": {
+      "get": {
+        "description": "Estancias TERMINADAS (el lead ya salió de la etapa) cuyo inicio cae en el rango: promedio y mediana en segundos, y cuántas son aproximadas (historia reconstruida). Las estancias abiertas no se promedian. Recorte por rol EN EL SERVIDOR (sin parámetro): OWNER/ADMIN y llave de API reciben todo; un AGENT o VIEWER recibe SOLO sus oportunidades (asignadas o cerradas por él) dentro de su visibilidad por equipo, sin filas de compañeros ni mediana de equipo. `scope` dice cuál llegó. Rango [from, to) con `to` EXCLUSIVO, tope de 92 días, en la zona horaria del negocio.",
+        "operationId": "PipelineReportsController_stageTime",
+        "parameters": [
+          {
+            "description": "Inicio (inclusive), YYYY-MM-DD en la zona del negocio.",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "example": "2026-10-01",
+              "pattern": "/^\\d{4}-\\d{2}-\\d{2}$/",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Fin (EXCLUSIVO), YYYY-MM-DD en la zona del negocio.",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "example": "2026-11-01",
+              "pattern": "/^\\d{4}-\\d{2}-\\d{2}$/",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Embudo (id del pipeline). Un id ajeno o inexistente da 404.",
+            "in": "query",
+            "name": "pipelineId",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Tiempo promedio en cada etapa de un embudo",
+        "tags": [
+          "Leads y embudos"
+        ],
+        "x-required-scopes": [
+          "metrics:read"
+        ]
+      }
+    },
+    "/v1/reports/pipeline-won": {
+      "get": {
+        "description": "Atribución = `closedAt` en el rango con la oportunidad en Ganada; el agente es el responsable AL CERRAR (`closedAssignedToId`: reasignar después no reescribe la historia). `groupBy` = agent | pipeline | day | week | month. El valor es el `valueMinor` actual; las monedas no se mezclan. Recorte por rol EN EL SERVIDOR (sin parámetro): OWNER/ADMIN y llave de API reciben todo; un AGENT o VIEWER recibe SOLO sus oportunidades (asignadas o cerradas por él) dentro de su visibilidad por equipo, sin filas de compañeros ni mediana de equipo. `scope` dice cuál llegó. Rango [from, to) con `to` EXCLUSIVO, tope de 92 días, en la zona horaria del negocio.",
+        "operationId": "PipelineReportsController_won",
+        "parameters": [
+          {
+            "description": "Inicio (inclusive), YYYY-MM-DD en la zona del negocio.",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "example": "2026-10-01",
+              "pattern": "/^\\d{4}-\\d{2}-\\d{2}$/",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Fin (EXCLUSIVO), YYYY-MM-DD en la zona del negocio.",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "example": "2026-11-01",
+              "pattern": "/^\\d{4}-\\d{2}-\\d{2}$/",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Acota a un embudo; sin él, todos los embudos.",
+            "in": "query",
+            "name": "pipelineId",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "groupBy",
+            "required": false,
+            "schema": {
+              "default": "agent",
+              "enum": [
+                "agent",
+                "pipeline",
+                "day",
+                "week",
+                "month"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Máximo de requests en la ventana (por tenant y clase de operación).",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests restantes en la ventana actual.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Segundos hasta que la ventana se reinicia.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": [
+          {
+            "api-key": []
+          }
+        ],
+        "summary": "Valor ganado por agente, embudo o periodo",
+        "tags": [
+          "Leads y embudos"
+        ],
+        "x-required-scopes": [
+          "metrics:read"
         ]
       }
     },
@@ -26278,7 +27560,7 @@
         "operationId": "TasksController_listMine",
         "parameters": [
           {
-            "description": "Filtra por responsable: `me` (la sesión) | `unassigned` | `<userId>`.",
+            "description": "Filtra por responsable: `me` (la sesión) | `unassigned` | `<userId>`. Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`.",
             "in": "query",
             "name": "assignedTo",
             "required": false,
@@ -26513,6 +27795,7 @@
     },
     "/v1/teams": {
       "get": {
+        "description": "OWNER/ADMIN (y API keys con `teams:read`): cada miembro con `{ id, name, email }`. AGENT/VIEWER: el mismo arreglo con `email: \"\"` — sin correo.",
         "operationId": "TeamsController_list",
         "parameters": [],
         "responses": {
