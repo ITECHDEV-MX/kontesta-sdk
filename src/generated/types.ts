@@ -1584,6 +1584,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/contacts/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exportar contactos a CSV con los mismos filtros del directorio (solo OWNER/ADMIN; queda en la bitácora) */
+        get: operations["ContactImportController_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/contacts/fields": {
         parameters: {
             query?: never;
@@ -1620,6 +1637,118 @@ export interface paths {
         patch: operations["ContactDirectoryController_updateField"];
         trace?: never;
     };
+    "/v1/contacts/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Últimas importaciones del negocio */
+        get: operations["ContactImportController_list"];
+        put?: never;
+        /**
+         * Importar contactos desde un archivo (trabajo en cola)
+         * @description Deduplica por teléfono canónico (con o sin el 1 de México). Exige elegir el consentimiento de forma explícita. Responde 202 con la importación; consulta el avance en `GET /v1/contacts/imports/{id}`.
+         */
+        post: operations["ContactImportController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/imports/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Vista previa de un archivo .csv/.xlsx: columnas, primeras filas y mapeo sugerido (no guarda nada) */
+        post: operations["ContactImportController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/imports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Avance de una importación */
+        get: operations["ContactImportController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/imports/{id}/errors.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reporte CSV de errores por fila de una importación */
+        get: operations["ContactImportController_errors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/person-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sugerencias de «misma persona» entre WhatsApp, Instagram y Messenger (OWNER/ADMIN)
+         * @description Pares de fichas de canales distintos con señales deterministas: mismo teléfono (WhatsApp contra un campo tipo teléfono de IG/FB), mismo correo; y como señales débiles mismo nombre completo o nombre + misma foto. Nunca se unen solas. No salen los pares descartados, los que ya son la misma persona ni los que no se pueden unir (los dos ya tienen ese canal).
+         */
+        get: operations["ContactPersonController_suggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/person-suggestions/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Descartar una sugerencia de «misma persona» (OWNER/ADMIN)
+         * @description Persistente: el par no vuelve a sugerirse. Deja AuditLog `contact.person_suggestion_dismissed`. Prohibido bajo suplantación.
+         */
+        post: operations["ContactPersonController_dismiss"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/contacts/segment/count": {
         parameters: {
             query?: never;
@@ -1635,6 +1764,43 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/segments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Segmentos guardados, cada uno con su conteo en vivo */
+        get: operations["ContactDirectoryController_listSegments"];
+        put?: never;
+        /** Guardar los filtros actuales como segmento con nombre */
+        post: operations["ContactDirectoryController_createSegment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/segments/{segmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Un segmento con su conteo en vivo */
+        get: operations["ContactDirectoryController_getSegment"];
+        put?: never;
+        post?: never;
+        /** Borrar un segmento (los contactos no se tocan) */
+        delete: operations["ContactDirectoryController_deleteSegment"];
+        options?: never;
+        head?: never;
+        /** Renombrar un segmento o cambiar sus filtros */
+        patch: operations["ContactDirectoryController_updateSegment"];
         trace?: never;
     };
     "/v1/contacts/{id}": {
@@ -1666,6 +1832,103 @@ export interface paths {
         /** Capturar el valor de un campo personalizado */
         put: operations["ContactDirectoryController_setFieldValue"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/{id}/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Todas las oportunidades de un contacto
+         * @description Keyset por `updatedAt` descendente (`nextCursor` opaco). Visibilidad por equipo como el tablero. 404 si el contacto no existe.
+         */
+        get: operations["ContactLeadsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/{id}/person": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * La persona detrás de una ficha: su ficha principal y sus canales con el hilo más reciente de cada uno
+         * @description 404 si la ficha no existe. Un solo canal = la ficha no está unida a otra.
+         */
+        get: operations["ContactPersonController_person"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/{id}/person-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** «Puede ser la misma persona que…»: sugerencias de esta ficha en otros canales (OWNER/ADMIN) */
+        get: operations["ContactPersonController_suggestionsFor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/{id}/person/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unir dos fichas de canales distintos en una sola persona (OWNER/ADMIN)
+         * @description No mueve hilos: cada canal conserva su ancla (wa_id, IGSID, PSID), su ventana de 24 h y sus entrantes. La ficha principal conserva su nombre, completa correo y empresa vacíos y recibe la unión de etiquetas y campos. Deja AuditLog `contact.person_linked`. Errores: 404 NOT_FOUND · 409 PERSON_ALREADY_LINKED · PERSON_CHANGED · MERGE_ALREADY_MERGED · 422 PERSON_SAME_CONTACT · PERSON_SAME_CHANNEL · PERSON_CHANNEL_TAKEN · PERSON_CHANNEL_UNSUPPORTED. Prohibido bajo suplantación.
+         */
+        post: operations["ContactPersonController_link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/{id}/person/unlink": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Separar esta ficha de su persona (OWNER/ADMIN)
+         * @description Si es la principal, la ficha unida más antigua pasa a serlo. Lo copiado al unir se queda. Deja AuditLog `contact.person_unlinked`. Errores: 404 · 409 PERSON_CHANGED · 422 PERSON_NOT_LINKED. Prohibido bajo suplantación.
+         */
+        post: operations["ContactPersonController_unlink"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1721,6 +1984,50 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/conversation-close-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Motivos de cierre del negocio
+         * @description Por omisión solo los activos, en orden. `includeInactive=true` (solo OWNER/ADMIN) agrega los archivados. La primera vez se siembran los de fábrica (Resuelto, Venta cerrada, Cita agendada, Sin respuesta del cliente, No le interesó, Duplicada, Spam).
+         */
+        get: operations["CloseReasonsController_list"];
+        put?: never;
+        /**
+         * Crear un motivo de cierre (auditado)
+         * @description 409 `CLOSE_REASON_LABEL_TAKEN` · `CLOSE_REASON_LIMIT_REACHED` (30).
+         */
+        post: operations["CloseReasonsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/conversation-close-reasons/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Renombrar, reordenar o archivar un motivo (auditado)
+         * @description Nunca se borra: `isActive=false` lo archiva.
+         */
+        patch: operations["CloseReasonsController_update"];
         trace?: never;
     };
     "/v1/conversations": {
@@ -1860,7 +2167,7 @@ export interface paths {
         head?: never;
         /**
          * Asignar / desasignar / cerrar / reabrir
-         * @description assignedToId debe ser User activo del tenant (400 si no); null desasigna. Cada cambio queda auditado (AuditLog: conversation.assigned|unassigned|closed|reopened).
+         * @description assignedToId debe ser User activo del tenant (400 si no); null desasigna. Cada cambio queda auditado (AuditLog: conversation.assigned|unassigned|closed|reopened|close_reason_set). El motivo de cierre va al cerrar o hasta 15 minutos después mientras siga cerrada (ver `closeReasonId`).
          */
         patch: operations["ConversationsController_update"];
         trace?: never;
@@ -2052,6 +2359,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/conversations/{id}/customer/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unir dos contactos duplicados del mismo canal (OWNER/ADMIN, gana el que se elija)
+         * @description Mueve al ganador conversaciones y mensajes, etiquetas, campos, notas, citas, cobros, tareas, oportunidades y consentimiento (una baja prevalece); el otro queda como histórico apuntando al ganador. Deja AuditLog `contact.merged_manual`. Errores: 404 NOT_FOUND · 422 MERGE_SAME_CONTACT · MERGE_CHANNEL_MISMATCH · 409 MERGE_ALREADY_MERGED. Prohibido bajo suplantación.
+         */
+        post: operations["ContactsController_merge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/conversations/{id}/customer/merge-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Duplicados probables del contacto (mismo canal) o búsqueda por nombre, teléfono, @usuario o correo (OWNER/ADMIN)
+         * @description Cada candidato trae su `conversationId` (opaco) para pasarlo a `merge`. Los que ya se unieron a otro no salen.
+         */
+        get: operations["ContactsController_mergeCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/conversations/{id}/customer/notes": {
         parameters: {
             query?: never;
@@ -2234,7 +2581,7 @@ export interface paths {
         };
         /**
          * Oportunidades de la conversación + embudos (ficha del hilo)
-         * @description Hoy `leads` trae 0 o 1 elemento (una oportunidad por conversación). Cada lead trae `pipelineId` y `stageChangedAt`; `pipelines` viene con el default primero y las etapas en orden.
+         * @description `leads` trae las oportunidades del hilo y del contacto (T33: varias por contacto), la PRINCIPAL en `[0]` (la decide el servidor: abiertas primero, las de este hilo, embudo predeterminado…) más `principalLeadId`, `contactId`, `counts` y `hasMore`. Cada lead trae `pipelineId` y `stageChangedAt`; `pipelines` viene con el default primero y las etapas en orden.
          */
         get: operations["ConversationLeadsController_list"];
         put?: never;
@@ -3196,6 +3543,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/lead-close-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Motivos de cierre del negocio
+         * @description Catálogo por negocio, ordenado por `position`. `kind`: LEAD_LOST | LEAD_WON. Los archivados solo con `includeArchived=1`.
+         */
+        get: operations["LeadCloseReasonsController_list"];
+        put?: never;
+        /**
+         * Crear un motivo de cierre
+         * @description 409 CLOSE_REASON_LABEL_TAKEN (mismo rótulo activo en el tipo) · 409 CLOSE_REASON_LIMIT (30 por tipo).
+         */
+        post: operations["LeadCloseReasonsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/lead-close-reasons/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Renombrar, reordenar o archivar un motivo
+         * @description Nunca se borra: `archived: true` lo deja de ofrecer, las oportunidades que ya lo usan lo conservan.
+         */
+        patch: operations["LeadCloseReasonsController_update"];
+        trace?: never;
+    };
     "/v1/leads": {
         parameters: {
             query?: never;
@@ -3211,7 +3602,7 @@ export interface paths {
         put?: never;
         /**
          * Alta manual de lead
-         * @description Con `conversationId`: 409 LEAD_EXISTS_FOR_CONVERSATION si el hilo ya tiene oportunidad; deja la línea «{persona} creó la oportunidad en {etapa}» en el hilo (P1-6a).
+         * @description T33: la oportunidad se ancla al CONTACTO (se deduce del hilo con `conversationId`, o `contactId`). Como máximo UNA abierta por contacto y embudo: 409 LEAD_EXISTS_FOR_CONVERSATION (`details.leadId`) si ya hay otra, salvo `allowAdditional: true`. `pipelineId` sin `stageId` usa la 1.ª etapa de ese embudo (409 PIPELINE_ARCHIVED, 400 STAGE_INVALID / CONTACT_INVALID). Deja la línea «{persona} creó la oportunidad en {etapa}» en el hilo (P1-6a). Acepta Idempotency-Key.
          */
         post: operations["LeadsController_create"];
         delete?: never;
@@ -3255,7 +3646,7 @@ export interface paths {
         head?: never;
         /**
          * Mover / asignar / valorar un lead
-         * @description Posición server-side desde before/afterLeadId (midpoint + rebalanceo inline). Precondición opcional `expectedStageId`/`expectedValueMinor` ⇒ 409 LEAD_CHANGED con `{ lead, lastChange }` si no coincide. La misma etapa sin vecinos no hace nada. Cambiar etapa o valor deja auditoría, línea en el hilo y sync CRM.
+         * @description Posición server-side desde before/afterLeadId (midpoint + rebalanceo inline). Precondición opcional `expectedStageId`/`expectedValueMinor` ⇒ 409 LEAD_CHANGED con `{ lead, lastChange }` si no coincide. La misma etapa sin vecinos no hace nada. Cambiar etapa o valor deja auditoría, línea en el hilo y sync CRM. T33: `closeReasonId` (catálogo `GET /v1/lead-close-reasons`) y `closeNote` (≤ 280) al cerrar; 422 CLOSE_REASON_REQUIRED si el embudo exige motivo de pérdida y falta; 400 CLOSE_REASON_INVALID (archivado, de otro tipo o lead abierto); 409 PIPELINE_ARCHIVED.
          */
         patch: operations["LeadsController_move"];
         trace?: never;
@@ -3487,7 +3878,7 @@ export interface paths {
         put?: never;
         /**
          * Subir un archivo para enviarlo por WhatsApp
-         * @description Sube la imagen o el documento a Meta y devuelve su `mediaId`, que se manda luego en POST /v1/conversations/:id/messages con kind=image|document|audio|video. El archivo NO se guarda de nuestro lado: duplicar PII del cliente sin necesidad. Límites: imagen 5 MB, documento/video/audio 16 MB. El contenido se verifica por firma (magic bytes) contra el MIME declarado: un ".mp4" que no es video es 400 MEDIA_CONTENT_MISMATCH. Nota de voz: máximo 2 min 30 s (el excedente se recorta). SIN conversación: manda `phoneNumberId` (id interno del número de envío) en lugar de `conversationId`; solo kind=image|video|document con los límites del encabezado de plantilla (JPEG/PNG 5 MB, MP4/3GPP 16 MB, PDF 16 MB). Exactamente uno de los dos. El `mediaId` solo sirve para enviar desde ese número y caduca en 30 días (`expiresAt`). Cuota: 20 por minuto por persona o llave (429 MEDIA_UPLOAD_RATE_LIMITED con `retryAfter`).
+         * @description Sube la imagen o el documento a Meta y devuelve su `mediaId`, que se manda luego en POST /v1/conversations/:id/messages con kind=image|document|audio|video. El archivo NO se guarda de nuestro lado: duplicar PII del cliente sin necesidad. Límites: imagen 5 MB, documento/video/audio 16 MB. El contenido se verifica por firma (magic bytes) contra el MIME declarado: un ".mp4" que no es video es 400 MEDIA_CONTENT_MISMATCH. Nota de voz: máximo 2 min 30 s (el excedente se recorta). SIN conversación: manda `phoneNumberId` (id interno del número de envío) en lugar de `conversationId`; solo kind=image|video|document con los límites del encabezado de plantilla (JPEG/PNG 5 MB, MP4/3GPP 16 MB, PDF 16 MB). Exactamente uno de los dos. El `mediaId` solo sirve para enviar desde ese número y caduca en 30 días (`expiresAt`). Cuota: 20 por minuto por persona o llave (429 MEDIA_UPLOAD_RATE_LIMITED con `retryAfter`). INSTAGRAM/MESSENGER (P1-7, detrás de la bandera de plataforma `messenger.mediaOut.enabled`; apagada ⇒ 422 CHANNEL_MEDIA_DISABLED): el archivo se guarda en Kontesta (Meta lo descarga por una liga firmada de 15 min al enviar) y `mediaId` es una referencia firmada `kmo1.…` atada a ESA conversación y a ese `kind`, vigente 24 h (`expiresAt`), con `phoneNumberId: null` y `channel`. Límites: imagen JPG/PNG 8 MB; video MP4 16 MB; audio (cualquier grabación) 16 MB, se convierte a M4A; documento: Instagram solo PDF, Messenger PDF/Office/txt/csv, 16 MB. Instagram y Messenger no admiten pie de foto: el texto va en un mensaje aparte.
          */
         post: operations["MediaController_upload"];
         delete?: never;
@@ -3804,7 +4195,45 @@ export interface paths {
         /** Pipelines + etapas del tenant (asegura el default) */
         get: operations["PipelinesController_list"];
         put?: never;
+        /** Crear embudo (R10-1) */
+        post: operations["PipelinesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/pipelines/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Renombrar / reordenar / marcar como predeterminado un embudo */
+        patch: operations["PipelinesController_update"];
+        trace?: never;
+    };
+    "/v1/pipelines/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archivar embudo
+         * @description Nunca se borra. El predeterminado no se archiva (409 `PIPELINE_IS_DEFAULT`). Con oportunidades abiertas exige `moveOpenTo` (etapa de otro embudo activo); sin él, 409 `PIPELINE_HAS_OPEN_LEADS`.
+         */
+        post: operations["PipelinesController_archive"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3822,6 +4251,23 @@ export interface paths {
         put?: never;
         /** Agregar columna a un pipeline */
         post: operations["PipelinesController_createStage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/pipelines/{id}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reactivar un embudo archivado */
+        post: operations["PipelinesController_unarchive"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3941,7 +4387,7 @@ export interface paths {
         };
         /**
          * Reporte de citas (ocupación · no-show · ingresos · rankings)
-         * @description Rango [from, to) en tz (to EXCLUSIVO, cap 92 días). Ocupación = horas reservadas (todo estado menos CANCELLED; NO_SHOW ocupa) / horas disponibles configuradas (null si no hay disponibilidad). noShowRate = NO_SHOW/(COMPLETED+NO_SHOW). Ingresos SIN doble conteo: cobrado (PaymentLink PAID), cubiertoPorBono APARTE, pendiente (TOTAL sin pagar). Filtros resourceId/appointmentTypeId acotan todo.
+         * @description Rango [from, to) en tz (to EXCLUSIVO, cap 92 días). Ocupación = horas reservadas (todo estado menos CANCELLED; NO_SHOW ocupa) / horas disponibles configuradas (null si no hay disponibilidad). noShowRate = NO_SHOW/(COMPLETED+NO_SHOW). Ingresos SIN doble conteo: cobrado (PaymentLink PAID), cubiertoPorBono APARTE, pendiente (TOTAL sin pagar). Filtros resourceId/appointmentTypeId acotan todo. Solo OWNER/ADMIN (lleva ingreso por profesional): una sesión AGENT/VIEWER recibe 403.
          */
         get: operations["ReportsController_appointments"];
         put?: never;
@@ -3964,6 +4410,66 @@ export interface paths {
          * @description Rango [from, to) en tz (to EXCLUSIVO, cap 92 días), atribuido por earnedAt. summary (accrual/reversal/net + conciliación cobrado-vs-pendiente) + byUser + byResource + byType + byDay. Filtros resourceId/userId/sourceType. Nómina-por-persona: scope PROPIO commissions:read + OWNER/ADMIN.
          */
         get: operations["ReportsController_commissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/pipeline-conversion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Conversión por etapa de un embudo
+         * @description Cohorte = leads del embudo creados en el rango. «Alcanzó la etapa S» = hubo un evento hacia S o hacia una etapa de mayor posición que no sea LOST (saltarse columnas cuenta como pasar). `outcome` trae ganadas, perdidas, abiertas, valor ganado por moneda, mediana de días a ganar y perdidas por motivo. `approximateBefore`/`approximateLeads` marcan la historia reconstruida de antes de la migración (aproximada). Recorte por rol EN EL SERVIDOR (sin parámetro): OWNER/ADMIN y llave de API reciben todo; un AGENT o VIEWER recibe SOLO sus oportunidades (asignadas o cerradas por él) dentro de su visibilidad por equipo, sin filas de compañeros ni mediana de equipo. `scope` dice cuál llegó. Rango [from, to) con `to` EXCLUSIVO, tope de 92 días, en la zona horaria del negocio.
+         */
+        get: operations["PipelineReportsController_conversion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/pipeline-stage-time": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tiempo promedio en cada etapa de un embudo
+         * @description Estancias TERMINADAS (el lead ya salió de la etapa) cuyo inicio cae en el rango: promedio y mediana en segundos, y cuántas son aproximadas (historia reconstruida). Las estancias abiertas no se promedian. Recorte por rol EN EL SERVIDOR (sin parámetro): OWNER/ADMIN y llave de API reciben todo; un AGENT o VIEWER recibe SOLO sus oportunidades (asignadas o cerradas por él) dentro de su visibilidad por equipo, sin filas de compañeros ni mediana de equipo. `scope` dice cuál llegó. Rango [from, to) con `to` EXCLUSIVO, tope de 92 días, en la zona horaria del negocio.
+         */
+        get: operations["PipelineReportsController_stageTime"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/pipeline-won": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Valor ganado por agente, embudo o periodo
+         * @description Atribución = `closedAt` en el rango con la oportunidad en Ganada; el agente es el responsable AL CERRAR (`closedAssignedToId`: reasignar después no reescribe la historia). `groupBy` = agent | pipeline | day | week | month. El valor es el `valueMinor` actual; las monedas no se mezclan. Recorte por rol EN EL SERVIDOR (sin parámetro): OWNER/ADMIN y llave de API reciben todo; un AGENT o VIEWER recibe SOLO sus oportunidades (asignadas o cerradas por él) dentro de su visibilidad por equipo, sin filas de compañeros ni mediana de equipo. `scope` dice cuál llegó. Rango [from, to) con `to` EXCLUSIVO, tope de 92 días, en la zona horaria del negocio.
+         */
+        get: operations["PipelineReportsController_won"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4254,7 +4760,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Equipos del negocio con sus miembros */
+        /**
+         * Equipos del negocio con sus miembros
+         * @description OWNER/ADMIN (y API keys con `teams:read`): cada miembro con `{ id, name, email }`. AGENT/VIEWER: el mismo arreglo con `email: ""` — sin correo.
+         */
         get: operations["TeamsController_list"];
         put?: never;
         /** Crear un equipo (auditado) */
@@ -4573,7 +5082,7 @@ export interface components {
              * @example FORBIDDEN
              * @enum {string}
              */
-            error: "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "TOKEN_EXPIRED" | "TOKEN_REUSED" | "TENANT_NOT_RESOLVED" | "TENANT_MISMATCH" | "FORBIDDEN" | "CROSS_TENANT_DENIED" | "PLAN_LIMIT_EXCEEDED" | "QUOTA_EXCEEDED" | "FEATURE_NOT_IN_PLAN" | "PAYMENT_REQUIRED" | "TENANT_SUSPENDED" | "PROVIDER_ERROR" | "INVALID_SIGNATURE" | "REPLAY_DETECTED" | "DUPLICATE_EVENT" | "INVALID_OAUTH_STATE" | "WABA_ALREADY_CLAIMED" | "ONBOARDING_FAILED" | "AUTOMATION_INVALID" | "APPOINTMENT_SLOT_UNAVAILABLE" | "LOYALTY_INVALID" | "LOYALTY_PROGRAM_NOT_FOUND" | "LOYALTY_MEMBER_BLOCKED" | "LOYALTY_INSUFFICIENT_BALANCE" | "RAG_DISABLED" | "RAG_EMBED_NOT_CONFIGURED" | "RAG_SOURCE_NOT_FOUND" | "MESSAGE_NOT_AUDIO" | "AI_STT_NOT_CONFIGURED" | "AI_INTELLIGENCE_NOT_CONFIGURED" | "COPILOT_DISABLED" | "AI_CHAT_NOT_CONFIGURED" | "AI_REWRITE_TOO_LONG" | "AI_PLATFORM_CAP" | "AI_INSIGHT_TOO_SOON" | "PLATFORM_CONFIG_MISSING" | "APP_VERSION_UNSUPPORTED" | "MAINTENANCE" | "USER_SESSION_REQUIRED" | "INVALID_PAYLOAD" | "PAYLOAD_TOO_LARGE" | "SCREENSHOT_UNSUPPORTED" | "SCREENSHOT_TOO_LARGE" | "CHANNELS_DISABLED" | "INVALID_STATE" | "INCOMPLETE_SCOPES" | "PAGE_ALREADY_CLAIMED" | "NO_PAGES_GRANTED" | "META_UNAVAILABLE" | "CHANNEL_CAPABILITY_MISSING" | "CHANNEL_OPS_UNSUPPORTED" | "TEXT_TOO_LONG" | "CHANNEL_DISCONNECTED" | "CALLING_DISABLED" | "CALLING_COEXISTENCE_UNSUPPORTED" | "CALLING_NOT_ENABLED_ON_NUMBER" | "CALL_PERMISSION_REQUIRED" | "CALL_PERMISSION_RATE_LIMITED" | "CALL_PERMISSION_ALREADY_GRANTED" | "CALL_PERMISSION_TEMPLATE_REQUIRED" | "CALL_ALREADY_CLAIMED" | "CALL_AGENT_BUSY" | "CALL_NOT_ACTIVE" | "CALL_ACCEPT_FAILED" | "CALL_RECORDING_OWNER_ONLY" | "CALL_RECORDING_NOT_ALLOWED" | "CALLING_CAP_REACHED" | "VALIDATION_FAILED" | "NOT_FOUND" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL" | "CONFIG_ERROR";
+            error: "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "TOKEN_EXPIRED" | "TOKEN_REUSED" | "TENANT_NOT_RESOLVED" | "TENANT_MISMATCH" | "FORBIDDEN" | "CROSS_TENANT_DENIED" | "PLAN_LIMIT_EXCEEDED" | "QUOTA_EXCEEDED" | "FEATURE_NOT_IN_PLAN" | "PAYMENT_REQUIRED" | "TENANT_SUSPENDED" | "PROVIDER_ERROR" | "INVALID_SIGNATURE" | "REPLAY_DETECTED" | "DUPLICATE_EVENT" | "INVALID_OAUTH_STATE" | "WABA_ALREADY_CLAIMED" | "ONBOARDING_FAILED" | "AUTOMATION_INVALID" | "APPOINTMENT_SLOT_UNAVAILABLE" | "LOYALTY_INVALID" | "LOYALTY_PROGRAM_NOT_FOUND" | "LOYALTY_MEMBER_BLOCKED" | "LOYALTY_INSUFFICIENT_BALANCE" | "WALLET_NOT_READY" | "RAG_DISABLED" | "RAG_EMBED_NOT_CONFIGURED" | "RAG_SOURCE_NOT_FOUND" | "MESSAGE_NOT_AUDIO" | "AI_STT_NOT_CONFIGURED" | "AI_INTELLIGENCE_NOT_CONFIGURED" | "COPILOT_DISABLED" | "AI_CHAT_NOT_CONFIGURED" | "AI_REWRITE_TOO_LONG" | "AI_PLATFORM_CAP" | "AI_INSIGHT_TOO_SOON" | "PLATFORM_CONFIG_MISSING" | "APP_VERSION_UNSUPPORTED" | "MAINTENANCE" | "USER_SESSION_REQUIRED" | "INVALID_PAYLOAD" | "PAYLOAD_TOO_LARGE" | "SCREENSHOT_UNSUPPORTED" | "SCREENSHOT_TOO_LARGE" | "CHANNELS_DISABLED" | "INVALID_STATE" | "INCOMPLETE_SCOPES" | "PAGE_ALREADY_CLAIMED" | "NO_PAGES_GRANTED" | "META_UNAVAILABLE" | "CHANNEL_CAPABILITY_MISSING" | "CHANNEL_OPS_UNSUPPORTED" | "TEXT_TOO_LONG" | "CHANNEL_DISCONNECTED" | "COMMENTS_DISABLED" | "COMMENT_ALREADY_REPLIED" | "COMMENT_REPLY_WINDOW_EXPIRED" | "COMMENT_DELETED" | "CALLING_DISABLED" | "CALLING_COEXISTENCE_UNSUPPORTED" | "CALLING_NOT_ENABLED_ON_NUMBER" | "CALL_PERMISSION_REQUIRED" | "CALL_PERMISSION_RATE_LIMITED" | "CALL_PERMISSION_ALREADY_GRANTED" | "CALL_PERMISSION_TEMPLATE_REQUIRED" | "CALL_ALREADY_CLAIMED" | "CALL_AGENT_BUSY" | "CALL_NOT_ACTIVE" | "CALL_ACCEPT_FAILED" | "CALL_RECORDING_OWNER_ONLY" | "CALL_RECORDING_NOT_ALLOWED" | "CALLING_CAP_REACHED" | "VALIDATION_FAILED" | "NOT_FOUND" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL" | "CONFIG_ERROR";
             /** @description Mensaje legible (string o lista de errores de validación). */
             message: string | string[];
             /** @description Correlación (logs). */
@@ -4802,6 +5311,20 @@ export interface components {
              */
             tipMinor?: number;
         };
+        CloseReasonResponseDto: {
+            id: string;
+            /** @description false = archivado: ya no sale en el selector, pero las conversaciones cerradas con él lo conservan. */
+            isActive: boolean;
+            /** @description true = viene de fábrica (se puede renombrar o archivar igual). */
+            isDefault: boolean;
+            /** @example Venta cerrada */
+            label: string;
+            /** @description Orden en el selector (menor primero). */
+            position: number;
+        };
+        CloseReasonsListResponseDto: {
+            items: components["schemas"]["CloseReasonResponseDto"][];
+        };
         ConnectReputationDto: {
             code: string;
             state: string;
@@ -4823,6 +5346,12 @@ export interface components {
             note?: string;
             /** @description Cuándo lo dio (ISO 8601; no futuro) (kind=note). */
             occurredAt?: string;
+        };
+        ContactImportPreviewDto: {
+            /** @description Contenido del archivo (.csv o .xlsx) en base64. Máximo 5 MB. */
+            contentBase64: string;
+            /** @description Nombre del archivo (solo para el historial). */
+            fileName: string;
         };
         ConversationCountsDto: {
             /**
@@ -4998,6 +5527,9 @@ export interface components {
             /** @description Día de la semana: 0=domingo … 6=sábado. */
             weekday: number;
         };
+        CreateCloseReasonDto: {
+            label: string;
+        };
         CreateCommissionRuleDto: {
             /** @description Activa. Default true. */
             active?: boolean;
@@ -5037,9 +5569,32 @@ export interface components {
             /** @description Opciones de un campo de lista (obligatorias si kind=SELECT). */
             options?: string[];
         };
+        CreateContactImportDto: {
+            /** @description Consentimiento EXPLÍCITO (obligatorio). `{ mode: "none" }` importa sin permiso de marketing; `{ mode: "granted", medium, note }` declara que el negocio tiene el permiso (asiento inmutable por persona). */
+            consent: {
+                [key: string]: unknown;
+            };
+            /** @description Contenido del archivo (.csv o .xlsx) en base64. Máximo 5 MB. */
+            contentBase64: string;
+            /** @description Nombre del archivo (solo para el historial). */
+            fileName: string;
+            /** @description Mapeo de columnas (índice base 0): `{ phone, name?, email?, company?, fields?: { <fieldId>: <columna> } }`. */
+            mapping: {
+                [key: string]: unknown;
+            };
+            /**
+             * @description Qué hacer si el teléfono ya existe en el directorio.
+             * @enum {string}
+             */
+            onExisting: "skip" | "fill" | "overwrite";
+        };
         CreateContactNoteDto: {
             /** @description Texto libre de la nota (trim + cap server-side). */
             body: string;
+        };
+        CreateContactSegmentDto: {
+            filters: components["schemas"]["SegmentFiltersDto"];
+            name: string;
         };
         CreateConversationDto: {
             /** @description Asignarme la conversación si está sin asignar (default true; se ignora con API key). */
@@ -5255,6 +5810,12 @@ export interface components {
             events?: "message.received" | "message.status_changed" | "conversation.assigned" | "conversation.closed" | "lead.created" | "lead.stage_changed" | "review.obtained" | "appointment.created" | "appointment.updated" | "payment.updated" | "handoff.requested" | "call.ended" | "call.recording_ready";
             url: string;
         };
+        DismissPersonSuggestionDto: {
+            /** @description Una de las dos fichas del par sugerido. */
+            contactId: string;
+            /** @description La otra ficha del par sugerido. */
+            otherContactId: string;
+        };
         EarnManualDto: {
             amountMinor?: number;
             idempotencyKey?: string;
@@ -5310,6 +5871,24 @@ export interface components {
             priority?: number;
             /** @description Recurso (staff/box) preferido; omitido = cualquiera. */
             resourceId?: string;
+        };
+        LinkPersonDto: {
+            /**
+             * @description `self` = la ficha de esta ruta queda como principal; `other` = la otra. Ninguna se borra ni pierde sus hilos.
+             * @enum {string}
+             */
+            keep: "self" | "other";
+            /** @description Id (opaco) de la otra ficha del directorio, tal como lo devuelven las sugerencias. */
+            otherContactId: string;
+        };
+        MergeContactDto: {
+            /**
+             * @description `self` = gana la ficha de esta conversación; `other` = gana la del duplicado. La que pierde queda como histórico.
+             * @enum {string}
+             */
+            keep: "self" | "other";
+            /** @description Conversación (opaca) del contacto duplicado, tal como la devuelve `merge-candidates`. */
+            otherConversationId: string;
         };
         MessageAtDateHitDto: {
             /** @description Id del mensaje ancla. */
@@ -5425,6 +6004,15 @@ export interface components {
              * @default false
              */
             typing: boolean;
+        };
+        QuickReplyDto: {
+            /** @description Dato que vuelve en el webhook cuando el cliente lo toca. Por omisión = `title`. Meta: hasta 1000 caracteres. */
+            payload?: string;
+            /**
+             * @description Texto del botón (Meta: hasta 20 caracteres).
+             * @example Agendar
+             */
+            title: string;
         };
         RagEngineStatusDto: {
             /**
@@ -5559,6 +6147,18 @@ export interface components {
             /** @description Llevan más de N minutos esperando respuesta. */
             waitingOverMin?: number;
         };
+        SegmentFiltersDto: {
+            /** @description Filtro por campo personalizado, `fieldId:valor`; se combinan con Y. */
+            field?: string[];
+            /** @description Incluye los archivados. */
+            includeArchived?: boolean;
+            /** @description Sólo contactos con al menos una conversación en este número (`PhoneNumber.id`). */
+            phoneNumberId?: string;
+            /** @description Busca en nombre, empresa, correo y teléfono. */
+            q?: string;
+            /** @description Sólo contactos con esta etiqueta. */
+            tagId?: string;
+        };
         SellPackageDto: {
             packageTypeId: string;
         };
@@ -5577,10 +6177,16 @@ export interface components {
             flowPurpose: "LEAD_CAPTURE" | "APPOINTMENT_REQUEST" | "CONTACT_CAPTURE";
         };
         SendInConversationDto: {
+            /** @description Para kind=interactive (C2 · «Botones o lista», solo WhatsApp y con la ventana de 24 h abierta): `{ type:"button", body, buttons:[{title}] }` (1–3, títulos ≤ 20 y distintos, cuerpo ≤ 1024) o `{ type:"list", body, button, rows:[{title, description?}] }` / `sections:[{title?, rows}]` (1–10 secciones, 1–10 filas EN TOTAL, título ≤ 24, descripción ≤ 72, header solo de texto). Los IDs de las opciones los asigna el API. Errores: 422 INTERACTIVE_INVALID `{ field, rule }` · 409 WINDOW_CLOSED · 422 CHANNEL_NOT_SUPPORTED. */
+            interactive?: {
+                [key: string]: unknown;
+            };
             /** @enum {string} */
-            kind: "text" | "template" | "image" | "document" | "audio" | "video" | "reaction";
+            kind: "text" | "template" | "image" | "document" | "audio" | "video" | "reaction" | "interactive";
             /** @description Para kind=image|document|audio|video: el medio a enviar (`id` de Meta o `link` público). */
             media?: components["schemas"]["OutboundMediaDto"];
+            /** @description Solo kind=text en Instagram/Messenger con la bandera `channels.meta.interactions`: botones que el cliente toca para contestar (Meta `quick_replies`). Hasta 13, de 20 caracteres. 422 QUICK_REPLIES_INVALID (límites) · QUICK_REPLIES_UNSUPPORTED (WhatsApp, otro kind o bandera apagada). */
+            quickReplies?: components["schemas"]["QuickReplyDto"][];
             /** @description Para kind=reaction: a qué mensaje y con qué emoji. Se persiste como Message type=reaction colgado del mensaje reaccionado; en el hilo se ve como el emoji bajo la burbuja. */
             reaction?: components["schemas"]["ReactionDto"];
             /** @description Cita: `externalMessageId` del mensaje al que se responde (el id que devuelve GET /messages). WhatsApp pinta la cita arriba de la burbuja. No aplica a plantillas: Cloud API las rechaza con contexto. */
@@ -5886,6 +6492,12 @@ export interface components {
             /** @description 0=domingo … 6=sábado. */
             weekday?: number;
         };
+        UpdateCloseReasonDto: {
+            /** @description false = archivar (nunca se borra). */
+            isActive?: boolean;
+            label?: string;
+            position?: number;
+        };
         UpdateCommissionRuleDto: {
             /** @description Activa/inactiva. */
             active?: boolean;
@@ -5914,9 +6526,17 @@ export interface components {
             /** @description Orden en el formulario. */
             position?: number;
         };
+        UpdateContactSegmentDto: {
+            filters?: components["schemas"]["SegmentFiltersDto"];
+            name?: string;
+        };
         UpdateConversationDto: {
             /** @description User.id del tenant con isActive=true; null = desasignar. */
             assignedToId?: string | null;
+            /** @description R10-10: comentario libre del cierre (hasta 280 caracteres). Mismas reglas que `closeReasonId`; vacío lo borra. */
+            closeNote?: string;
+            /** @description R10-10: motivo del catálogo (`GET /v1/conversation-close-reasons`). Va en el mismo PATCH que cierra (`status: "CLOSED"`) o DESPUÉS, solo (sin `status`), mientras la conversación siga cerrada y dentro de 15 minutos desde `closedAt`: 409 `CONVERSATION_NOT_CLOSED` si está abierta o se reabrió, 409 `CLOSE_REASON_WINDOW_EXPIRED` si ya pasó la ventana. Nunca con `status: "OPEN"` (400 `CLOSE_REASON_ONLY_WHEN_CLOSING`). 400 `CLOSE_REASON_NOT_FOUND` si no existe, es de otro negocio o está archivado. Opcional: cerrar sin motivo siempre es válido. Repetir el mismo valor no cambia nada. */
+            closeReasonId?: string;
             /** @enum {string} */
             status?: "OPEN" | "CLOSED";
             /** @description Mover a un equipo; null = sacarla de su equipo (vuelve al reparto global). */
@@ -9808,10 +10428,51 @@ export interface operations {
             429: components["responses"]["TooManyRequests"];
         };
     };
+    ContactImportController_export: {
+        parameters: {
+            query?: {
+                /** @description Busca en nombre, empresa, correo y teléfono. */
+                q?: string;
+                /** @description Sólo contactos con esta etiqueta. */
+                tagId?: string;
+                /** @description Filtro por campo personalizado, `fieldId:valor`. Repetible; se combinan con Y. */
+                field?: string[];
+                /** @description Sólo contactos que tienen al menos una conversación en este número (`PhoneNumber.id`, el `id` del número en Ajustes › Números). */
+                phoneNumberId?: string;
+                /** @description Incluye los archivados. */
+                includeArchived?: boolean;
+                limit?: number;
+                /** @description Cursor opaco de la página siguiente. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
     ContactDirectoryController_listFields: {
         parameters: {
-            query: {
-                includeArchived: string;
+            query?: {
+                /** @description `true` incluye los campos archivados. */
+                includeArchived?: string;
             };
             header?: never;
             path?: never;
@@ -9932,6 +10593,217 @@ export interface operations {
             429: components["responses"]["TooManyRequests"];
         };
     };
+    ContactImportController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactImportController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateContactImportDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactImportController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContactImportPreviewDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactImportController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactImportController_errors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactPersonController_suggestions: {
+        parameters: {
+            query?: {
+                /** @description 1–50 (20 por omisión). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactPersonController_dismiss: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DismissPersonSuggestionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
     ContactDirectoryController_countSegment: {
         parameters: {
             query?: {
@@ -9966,6 +10838,158 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactDirectoryController_listSegments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactDirectoryController_createSegment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateContactSegmentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactDirectoryController_getSegment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                segmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactDirectoryController_deleteSegment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                segmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactDirectoryController_updateSegment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                segmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateContactSegmentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
@@ -10051,6 +11075,166 @@ export interface operations {
                 "application/json": components["schemas"]["SetFieldValueDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactLeadsController_list: {
+        parameters: {
+            query?: {
+                /** @description `nextCursor` de la página anterior. */
+                cursor?: unknown;
+                /** @description 1–100 (30 por omisión). */
+                limit?: unknown;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactPersonController_person: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactPersonController_suggestionsFor: {
+        parameters: {
+            query?: {
+                /** @description 1–50 (5 por omisión). */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactPersonController_link: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkPersonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactPersonController_unlink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -10173,11 +11357,135 @@ export interface operations {
             429: components["responses"]["TooManyRequests"];
         };
     };
+    CloseReasonsController_list: {
+        parameters: {
+            query?: {
+                includeInactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloseReasonsListResponseDto"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    CloseReasonsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCloseReasonDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloseReasonResponseDto"];
+                };
+            };
+            /** @description CLOSE_REASON_LABEL_REQUIRED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description CLOSE_REASON_LABEL_TAKEN · CLOSE_REASON_LIMIT_REACHED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    CloseReasonsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCloseReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloseReasonResponseDto"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description CLOSE_REASON_LABEL_TAKEN */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
     ConversationsController_list: {
         parameters: {
             query?: {
                 status?: "open" | "closed" | "all";
-                /** @description `me` | `unassigned` | `<userId>` (`me` = principal autenticado) */
+                /** @description `me` | `unassigned` | `<userId>` (`me` = principal autenticado). Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`. */
                 assignedTo?: string;
                 /** @description Canal del hilo: `whatsapp` | `instagram` | `messenger`. Se convierte con `toChannelEnum()` (fail-closed) al enum de la base. */
                 channel?: "whatsapp" | "instagram" | "messenger";
@@ -10196,6 +11504,10 @@ export interface operations {
                 waitingOverMin?: number;
                 /** @description `pending` = solo las que tienen un traspaso bot→humano pendiente (el bot pidió una persona y nadie ha contestado). Usa el índice parcial de pendientes; se combina con los demás filtros. */
                 handoff?: "pending";
+                /** @description R10-13: sólo las de esta prioridad del equipo (`high` = alta). Se resuelve en el SERVIDOR con el mismo cursor. */
+                priority?: "high" | "normal";
+                /** @description R10-13: orden del listado. `recent` (omisión) = `lastMessageAt DESC`. `priority` = alta primero y, dentro de cada tramo, `lastMessageAt DESC`. El cursor recuerda el orden: usarlo con otro `sort` ⇒ 400 `INVALID_CURSOR`. En los dos órdenes las FIJADAS de quien pregunta salen antes, solo en la primera página (`pinned: true`), y no se repiten en las siguientes; no cuentan contra `limit`. */
+                sort?: "recent" | "priority";
                 limit?: number;
                 /** @description Cursor keyset opaco (de `nextCursor`). */
                 cursor?: string;
@@ -10307,7 +11619,7 @@ export interface operations {
     ConversationsController_counts: {
         parameters: {
             query?: {
-                /** @description `me` | `unassigned` | `<userId>` (`me` = principal autenticado). Es el alcance «Mías» del segmentado. */
+                /** @description `me` | `unassigned` | `<userId>` (`me` = principal autenticado). Es el alcance «Mías» del segmentado. Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`. */
                 assignedTo?: string;
                 /** @description `<teamId>` para la bandeja de un equipo (alcance «Mi equipo»); `none` para las que no están en ninguno. */
                 teamId?: string;
@@ -10496,6 +11808,13 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description `CONVERSATION_NOT_CLOSED` · `CLOSE_REASON_WINDOW_EXPIRED` — motivo de cierre agregado después de cerrar. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             429: components["responses"]["TooManyRequests"];
         };
     };
@@ -10930,6 +12249,74 @@ export interface operations {
                 "application/json": components["schemas"]["UpsertFiscalDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactsController_merge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MergeContactDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    ContactsController_mergeCandidates: {
+        parameters: {
+            query?: {
+                /** @description Texto a buscar (nombre, @usuario, correo o teléfono). Vacío ⇒ solo duplicados probables. */
+                q?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -13593,11 +14980,107 @@ export interface operations {
             429: components["responses"]["TooManyRequests"];
         };
     };
+    LeadCloseReasonsController_list: {
+        parameters: {
+            query?: {
+                kind?: "LEAD_LOST" | "LEAD_WON";
+                /** @description `1` incluye los archivados. */
+                includeArchived?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    LeadCloseReasonsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    LeadCloseReasonsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
     LeadsController_list: {
         parameters: {
             query?: {
                 /** @description Filtra por etapa (columna del kanban). */
                 stageId?: string;
+                /** @description T33: solo las oportunidades de este embudo. */
+                pipelineId?: string;
+                /** @description T33: solo las oportunidades de este contacto. */
+                contactId?: string;
+                /** @description T33: estado — `open` (abierta), `won` (ganada) o `lost` (perdida). */
+                status?: "open" | "won" | "lost";
                 /** @description `unassigned` | `<userId>`. */
                 assignedTo?: string;
                 /** @description Segmenta por tags (ConversationTag): ids separados por coma. */
@@ -13634,7 +15117,10 @@ export interface operations {
     LeadsController_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Llave única por intento de envío (1-255 caracteres ASCII visibles, p. ej. un UUID). Reenviar la MISMA petición con la misma llave dentro de 24 h devuelve la respuesta original (mismo messageId) sin encolar otro envío, con la cabecera `Idempotent-Replayed: true`. La llave es por usuario/API key y tenant. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13656,7 +15142,21 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description `IDEMPOTENCY_KEY_REUSED`: la llave ya se usó con otro cuerpo · `IDEMPOTENCY_IN_PROGRESS`: la petición original sigue en curso (reintentar) · `IDEMPOTENCY_ORIGINAL_FAILED`: la original falló sin confirmar si el mensaje salió; no se reintenta con esa llave (revisar la conversación y, si hace falta, usar una nueva). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             429: components["responses"]["TooManyRequests"];
+            /** @description `IDEMPOTENCY_UNAVAILABLE`: con Idempotency-Key, si no se puede garantizar que el envío no se duplique, no se manda nada y se responde 503 con `Retry-After`. Reintentar con la MISMA llave. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     LeadsController_board: {
@@ -14282,7 +15782,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description { mediaId, filename, mimeType, size, phoneNumberId, expiresAt } */
+            /** @description { mediaId, filename, mimeType, size, phoneNumberId, expiresAt, channel? } (IG/FB: phoneNumberId null, channel) */
             200: {
                 headers: {
                     /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
@@ -14947,7 +16447,10 @@ export interface operations {
     };
     PipelinesController_list: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description `1` o `true` incluye los embudos archivados. */
+                includeArchived?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -14973,7 +16476,123 @@ export interface operations {
             429: components["responses"]["TooManyRequests"];
         };
     };
+    PipelinesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    PipelinesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    PipelinesController_archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
     PipelinesController_createStage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    PipelinesController_unarchive: {
         parameters: {
             query?: never;
             header?: never;
@@ -15303,6 +16922,112 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    PipelineReportsController_conversion: {
+        parameters: {
+            query: {
+                /** @description Inicio (inclusive), YYYY-MM-DD en la zona del negocio. */
+                from: string;
+                /** @description Fin (EXCLUSIVO), YYYY-MM-DD en la zona del negocio. */
+                to: string;
+                /** @description Embudo (id del pipeline). Un id ajeno o inexistente da 404. */
+                pipelineId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    PipelineReportsController_stageTime: {
+        parameters: {
+            query: {
+                /** @description Inicio (inclusive), YYYY-MM-DD en la zona del negocio. */
+                from: string;
+                /** @description Fin (EXCLUSIVO), YYYY-MM-DD en la zona del negocio. */
+                to: string;
+                /** @description Embudo (id del pipeline). Un id ajeno o inexistente da 404. */
+                pipelineId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    PipelineReportsController_won: {
+        parameters: {
+            query: {
+                /** @description Inicio (inclusive), YYYY-MM-DD en la zona del negocio. */
+                from: string;
+                /** @description Fin (EXCLUSIVO), YYYY-MM-DD en la zona del negocio. */
+                to: string;
+                /** @description Acota a un embudo; sin él, todos los embudos. */
+                pipelineId?: string;
+                groupBy?: "agent" | "pipeline" | "day" | "week" | "month";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Máximo de requests en la ventana (por tenant y clase de operación). */
+                    "X-RateLimit-Limit"?: number;
+                    /** @description Requests restantes en la ventana actual. */
+                    "X-RateLimit-Remaining"?: number;
+                    /** @description Segundos hasta que la ventana se reinicia. */
+                    "X-RateLimit-Reset"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
@@ -15727,7 +17452,7 @@ export interface operations {
     TasksController_listMine: {
         parameters: {
             query?: {
-                /** @description Filtra por responsable: `me` (la sesión) | `unassigned` | `<userId>`. */
+                /** @description Filtra por responsable: `me` (la sesión) | `unassigned` | `<userId>`. Un `<userId>` que no es una persona de este negocio (o no existe) ⇒ 400 `ASSIGNED_TO_UNKNOWN`. */
                 assignedTo?: string;
                 /** @description Solo tareas con `dueAt` < esta fecha (ISO-8601) — vencen antes de. */
                 dueBefore?: string;
