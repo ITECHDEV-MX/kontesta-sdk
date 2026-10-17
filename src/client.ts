@@ -2,6 +2,7 @@ import { resolveConfig, type KontestaConfig } from './config.js';
 import { HttpTransport } from './http/transport.js';
 import { AutomationsClient } from './resources/automations.js';
 import { ConversationsClient } from './resources/conversations.js';
+import { HostedLinksClient } from './resources/hosted-links.js';
 import { IntegrationsClient } from './resources/integrations.js';
 import { LeadsClient } from './resources/leads.js';
 import { MetricsClient } from './resources/metrics.js';
@@ -34,6 +35,8 @@ export class Kontesta {
   readonly metrics: MetricsClient;
   readonly webhooks: WebhooksClient;
   readonly integrations: IntegrationsClient;
+  /** Ligas hospedadas (flujo tipo 3-D Secure): p. ej. que tu cliente conecte su número de WhatsApp. */
+  readonly hostedLinks: HostedLinksClient;
 
   private readonly transport: HttpTransport;
 
@@ -48,6 +51,7 @@ export class Kontesta {
     this.metrics = new MetricsClient(this.transport);
     this.webhooks = new WebhooksClient(this.transport);
     this.integrations = new IntegrationsClient(this.transport);
+    this.hostedLinks = new HostedLinksClient(this.transport);
   }
 }
 

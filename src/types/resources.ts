@@ -33,6 +33,10 @@ export interface ChannelCapabilities {
   outOfWindowTemplates: 'none' | 'whatsapp' | 'messenger_utility';
   mediaOut: boolean;
   reactionsOut: boolean;
+  /** «Botones o lista» desde la bandeja (C2): solo WhatsApp. */
+  interactiveOut: boolean;
+  /** Botones de respuesta (quick replies de Meta) salientes: IG/FB con la bandera `channels.meta.interactions`. */
+  quickRepliesOut?: boolean;
   deleteInInbox: boolean;
   reopen: 'template' | 'human_agent_7d';
   paidOutOfWindow: 'none' | 'marketing_messages';
@@ -187,6 +191,16 @@ export interface Lead {
   pipelineId: string | null;
   /** Cuándo llegó a la etapa actual (ISO). */
   stageChangedAt: string | null;
+  /** Contacto al que está anclada (un contacto puede tener varias oportunidades). */
+  contactId?: string | null;
+  status?: 'open' | 'won' | 'lost';
+  source?: 'auto' | 'manual' | 'flow' | 'api';
+  /** Cuándo se cerró (ISO); null = abierta. */
+  closedAt?: string | null;
+  /** Motivo de cierre del catálogo (`GET /v1/lead-close-reasons`). */
+  closeReason?: { id: string; label: string } | null;
+  /** Nota interna del cierre (≤ 280). */
+  closeNote?: string | null;
 }
 
 export interface Stage {
@@ -204,6 +218,14 @@ export interface Pipeline {
   name: string;
   isDefault: boolean;
   autoCreateLeads: boolean;
+  /** Mover a Perdida exige `closeReasonId` (422 `CLOSE_REASON_REQUIRED`). */
+  requireLossReason?: boolean;
+  /** Orden del embudo en el selector. */
+  position?: number;
+  /** ISO si el embudo está archivado (solo llega con `includeArchived`). */
+  archivedAt?: string | null;
+  /** Oportunidades abiertas del embudo (en `GET /v1/pipelines`). */
+  openCount?: number;
   stages: Stage[];
 }
 
