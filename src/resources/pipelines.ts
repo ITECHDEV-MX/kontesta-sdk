@@ -5,9 +5,16 @@ import type { Pipeline, Stage } from '../types/resources.js';
 export class PipelinesClient {
   constructor(private readonly transport: HttpTransport) {}
 
-  /** GET /v1/pipelines — pipelines del tenant con sus etapas. */
-  list(): Promise<Pipeline[]> {
-    return this.transport.json({ method: 'GET', path: '/v1/pipelines' });
+  /**
+   * GET /v1/pipelines — pipelines del tenant con sus etapas (el predeterminado primero). Los archivados solo con
+   * `includeArchived: true`.
+   */
+  list(params: { includeArchived?: boolean } = {}): Promise<Pipeline[]> {
+    return this.transport.json({
+      method: 'GET',
+      path: '/v1/pipelines',
+      query: params.includeArchived ? { includeArchived: 'true' } : undefined,
+    });
   }
 
   /** POST /v1/pipelines/:id/stages — crea una etapa en el pipeline. */
