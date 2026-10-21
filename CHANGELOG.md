@@ -12,6 +12,16 @@ atado al contrato de llave de la API `/v1` (las operaciones que alcanza una llav
 Cada versión se publica en npm desde este repositorio al crear la etiqueta `v<versión>`, con procedencia verificable
 (npm provenance).
 
+## [Sin publicar]
+
+### Agregado
+- Recurso `hostedLinks` (`create`, `get`, `cancel`): ligas hospedadas de un solo uso, al estilo 3-D Secure, para que
+  el cliente del integrador conecte su número de WhatsApp en la web de Kontesta. Tipos `HostedLink`,
+  `CreatedHostedLink`, `HostedLinkWhatsappResult`, `HostedLinkEventData` y `HostedLinkPostMessage`. Scopes
+  `hostedlinks:read` / `hostedlinks:write`; webhooks `hosted_link.completed` y `hosted_link.failed`.
+  Emitir exige negocio activo con plan de pago y habilitado por Kontesta: errores 403 `HOSTED_LINKS_NOT_ALLOWED`,
+  `HOSTED_LINKS_NOT_ENABLED` y `EMAIL_NOT_VERIFIED`.
+
 ## [1.0.0] — sin publicar
 
 Primera versión pública.
