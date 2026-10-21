@@ -30,6 +30,17 @@ export { WebhooksClient } from './resources/webhooks.js';
 export type { ListDeliveriesParams } from './resources/webhooks.js';
 export { IntegrationsClient } from './resources/integrations.js';
 export type { CreateIntegrationInput, UpdateIntegrationInput } from './resources/integrations.js';
+export { HostedLinksClient } from './resources/hosted-links.js';
+export type {
+  HostedLinkFlow,
+  HostedLinkStatus,
+  CreateHostedLinkInput,
+  CreatedHostedLink,
+  HostedLink,
+  HostedLinkWhatsappResult,
+  HostedLinkEventData,
+  HostedLinkPostMessage,
+} from './resources/hosted-links.js';
 
 // ── HTTP / transporte ──
 export { HttpTransport } from './http/transport.js';
