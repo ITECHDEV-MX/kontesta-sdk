@@ -41,6 +41,7 @@ const ARCHIVOS = new Set([
   'src/index.ts',
   'src/resources/automations.ts',
   'src/resources/conversations.ts',
+  'src/resources/hosted-links.ts',
   'src/resources/integrations.ts',
   'src/resources/leads.ts',
   'src/resources/metrics.ts',
@@ -103,6 +104,8 @@ const NO_SON_HOSTS = new Set([
   'info.name', 'integrations.test', 'kontesta.webhooks.ping', 'lead.id', 'lead.name', 'new.target.name',
   'res.data', 'sub.id', 'test.ping', 'this.name', 'typed.id', 'webhooks.ping', 'i.test', 'OCTETOS.test',
   'DOCUMENTACION.test', 'exports.GA', 'partes.map',
+  // Snippet del popup de ligas hospedadas en el README: `window.open(...)`, el `e.data` del evento `message`, `link.id`.
+  'window.open', 'e.data', 'link.id',
 ]);
 
 // Lista COMPLETA de TLD de IANA (scripts/tlds-iana.txt, el archivo tlds-alpha-by-domain.txt que publica IANA), más los

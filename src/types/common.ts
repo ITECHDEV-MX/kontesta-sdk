@@ -57,6 +57,8 @@ export const GA_WEBHOOK_EVENTS = [
   'appointment.updated',
   'payment.updated',
   'handoff.requested',
+  'hosted_link.completed',
+  'hosted_link.failed',
 ] as const satisfies readonly WebhookEventType[];
 
 /**
