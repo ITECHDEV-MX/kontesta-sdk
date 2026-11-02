@@ -134,7 +134,7 @@ nada:
 - `429`: siempre. El servidor rechazó la petición sin procesarla. La espera respeta
   `Retry-After`, con un tope de 60 s.
 - `5xx` y fallas de conexión: en `GET`, `PUT` y `DELETE`, y en los envíos que el servidor
-  deduplica por `Idempotency-Key`. Hoy eso cubre `conversations.messages.send`.
+  deduplica por `Idempotency-Key`. Hoy eso cubre `conversations.messages.send` y `hostedLinks.create`.
   Si el servidor no puede garantizar que no se duplique, responde `503` sin mandar nada, y el
   SDK lo reintenta con la misma clave.
 - Cualquier otro `POST` o `PATCH` que falle con `5xx` o por la red **no se reintenta**:
@@ -215,6 +215,7 @@ que pedirlos por nombre.
 | `metrics` | `speedToLead` |
 | `webhooks` | `list`, `create`, `get`, `update`, `remove`, `deliveries`, `redeliver`, `ping`, `rotateSecret` |
 | `integrations` | `list`, `create`, `get`, `update`, `remove`, `test` |
+| `hostedLinks` | `create`, `get`, `cancel` |
 
 `requestHandoff` y `returnHandoff` pasan la conversación a una persona de tu equipo y la
 regresan al bot.
@@ -225,6 +226,44 @@ en el contrato OpenAPI de este repositorio ([`openapi/openapi.json`](./openapi/o
 se llaman con peticiones HTTP directas y la misma llave. Crear o revocar llaves y
 administrar la cuenta del negocio se hace desde la app, con sesión de una persona: una
 llave de API no llega ahí.
+
+## Ligas hospedadas: que tu cliente conecte su WhatsApp
+
+Una liga hospedada funciona como el 3-D Secure de un pago: tu sistema pide una liga de un solo uso, la abres en
+un popup, tu cliente completa el paso en la web de Kontesta y tú te enteras del resultado. Hoy el único flujo es
+`whatsapp_onboarding`: conectar el número de WhatsApp del negocio (también con Coexistence, donde el número sigue
+en la app WhatsApp Business del teléfono). La llave necesita `hostedlinks:write` para crear y `hostedlinks:read`
+para consultar.
+
+Emitir ligas requiere un negocio activo con plan de pago **y habilitado por Kontesta** (se activa por negocio; pídelo a
+soporte). Si no, `create` falla con 403: `HOSTED_LINKS_NOT_ALLOWED` (sin plan de pago vigente),
+`HOSTED_LINKS_NOT_ENABLED` (el negocio aún no está habilitado) o `EMAIL_NOT_VERIFIED` (sesión con correo sin
+confirmar). `get` y `cancel` de ligas ya emitidas no dependen de la habilitación.
+
+```ts
+// En tu backend
+const link = await kontesta.hostedLinks.create({
+  flow: 'whatsapp_onboarding',
+  returnOrigin: 'https://erp.example.com', // origen exacto de tu página, sin ruta
+  metadata: { cliente: 'C-1042' },         // vuelve tal cual en get() y en los webhooks
+});
+// link.url → ábrela en un popup desde tu página. Contiene el token: no la guardes.
+
+// En tu página (linkUrl = la url que te pasó tu backend)
+window.open(linkUrl, 'kontesta', 'popup,width=480,height=720');
+window.addEventListener('message', (e) => {
+  if (e.origin !== new URL(linkUrl).origin || e.data?.type !== 'kontesta.hosted_link') return;
+  if (e.data.status === 'completed') console.log('conectado', e.data.result.phoneNumberId);
+});
+
+// Confirma siempre del lado del servidor (o espera el webhook hosted_link.completed)
+const estado = await kontesta.hostedLinks.get(link.id);
+if (estado.status === 'COMPLETED') {
+  // estado.result.phoneNumberId es el id de Kontesta que acepta el envío de mensajes
+}
+```
+
+El mensaje del popup solo avisa; la verdad es `hostedLinks.get` o el webhook firmado.
 
 ## Tipos generados del OpenAPI
 
